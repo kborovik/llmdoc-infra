@@ -24,6 +24,8 @@ terraform_output ?= ${root_path}/terraform-output.json
 terraform_bucket ?= terraform-${google_project}
 terraform_prefix ?= ${app_id}
 
+PAUSE ?= 0
+
 ###############################################################################
 # Settings
 ###############################################################################
@@ -38,6 +40,8 @@ settings:
 ###############################################################################
 # Terraform
 ###############################################################################
+terraform: terraform-plan prompt terraform-apply
+
 terraform-fmt: terraform-version
 	$(call header,Check Terraform Code Format)
 	cd ${terraform_dir}
@@ -157,6 +161,15 @@ checkov-upgrade:
 	pipx upgrade checkov
 
 ###############################################################################
+# Demo
+###############################################################################
+demo: demo-terraform
+
+demo-terraform:
+	$(call header,Demo)
+	asciinema rec -t "llm-docs - terraform" -c "PAUSE=3 make terraform-plan prompt terraform-apply"
+
+###############################################################################
 # Prompt
 ###############################################################################
 prompt:
@@ -175,6 +188,7 @@ echo
 echo "########################################################################"
 echo "# $(1)"
 echo "########################################################################"
+sleep ${PAUSE}
 endef
 
 ###############################################################################

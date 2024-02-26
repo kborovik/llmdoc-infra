@@ -27,6 +27,7 @@ resource "google_container_cluster" "gke1" {
   description              = "${var.app_id} Kubernetes Cluster"
   project                  = var.google_project
   location                 = var.google_region
+  deletion_protection      = false
   initial_node_count       = 1
   remove_default_node_pool = true
   network                  = google_compute_network.main.id

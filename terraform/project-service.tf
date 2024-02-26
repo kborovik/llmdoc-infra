@@ -7,6 +7,7 @@ locals {
     "cloudresourcemanager.googleapis.com",
     "compute.googleapis.com",
     "container.googleapis.com",
+    "containersecurity.googleapis.com",
     "iap.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",

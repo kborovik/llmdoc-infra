@@ -9,3 +9,12 @@ Components:
 - Kubernetes (HELM)
 - Functional testing
 
+## Deployment
+
+### Terraform
+
+```shell
+make terraform
+```
+
+[![asciicast](https://asciinema.org/a/642869.svg)](https://asciinema.org/a/642869)
