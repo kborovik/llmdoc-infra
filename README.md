@@ -4,12 +4,16 @@ Google Cloud infrastructure deployment for https://github.com/kborovik/llmdoc
 
 # Pipeline Stages
 
-- Security static analysis (https://www.checkov.io/)
+- Security static analysis
 - Terraform deployment
-- Kubernetes (HELM) deployment
+- Kubernetes deployment
 - Functional testing
 
 ## Security Static Analysis
+
+Checkov is a static code analysis tool for scanning infrastructure as code (IaC) files for misconfigurations that may lead to security or compliance problems.
+
+https://www.checkov.io/
 
 ```shell
 make checkov

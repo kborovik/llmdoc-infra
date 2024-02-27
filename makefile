@@ -163,7 +163,7 @@ checkov-upgrade:
 ###############################################################################
 # Demo
 ###############################################################################
-demo: demo-terraform
+demo: demo-checkov demo-terraform
 
 demo-checkov:
 	asciinema rec -t "llmdocs-infra - checkov" -c "PAUSE=3 make checkov"
