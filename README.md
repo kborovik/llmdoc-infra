@@ -2,19 +2,35 @@
 
 Google Cloud infrastructure deployment for https://github.com/kborovik/llmdoc
 
-Components:
+# Pipeline Stages
 
-- Terraform and HELM linting Checkov (https://www.checkov.io/)
-- Terraform
-- Kubernetes (HELM)
+- Security static analysis (https://www.checkov.io/)
+- Terraform deployment
+- Kubernetes (HELM) deployment
 - Functional testing
 
-## Deployment
+## Security Static Analysis
 
-### Terraform
+```shell
+make checkov
+```
+
+[![asciicast](https://asciinema.org/a/643320.svg)](https://asciinema.org/a/643320)
+
+## Terraform
+
+Work in progress
 
 ```shell
 make terraform
 ```
 
 [![asciicast](https://asciinema.org/a/642869.svg)](https://asciinema.org/a/642869)
+
+## Kubernetes (HELM)
+
+Work in progress
+
+## Functional Testing
+
+Work in progress

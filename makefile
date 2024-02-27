@@ -165,9 +165,11 @@ checkov-upgrade:
 ###############################################################################
 demo: demo-terraform
 
+demo-checkov:
+	asciinema rec -t "llmdocs-infra - checkov" -c "PAUSE=3 make checkov"
+
 demo-terraform:
-	$(call header,Demo)
-	asciinema rec -t "llm-docs - terraform" -c "PAUSE=3 make terraform-plan prompt terraform-apply"
+	asciinema rec -t "llmdocs-infra - terraform" -c "PAUSE=3 make terraform-plan prompt terraform-apply"
 
 ###############################################################################
 # Prompt

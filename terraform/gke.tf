@@ -42,10 +42,20 @@ resource "google_container_cluster" "gke1" {
     }
   }
 
+  master_auth {
+    client_certificate_config {
+      issue_client_certificate = false
+    }
+  }
+
   master_authorized_networks_config {
     cidr_blocks {
       cidr_block = google_compute_subnetwork.subnet1.ip_cidr_range
     }
+  }
+
+  network_policy {
+    enabled = true
   }
 
   ip_allocation_policy {
