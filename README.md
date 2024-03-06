@@ -41,4 +41,4 @@ Work in progress
 
 ## Deployment Stack
 
-[![deployment](docs/deployment.svg)]
+![Deployment Diagram](docs/deployment.svg)
