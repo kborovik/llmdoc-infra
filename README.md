@@ -2,6 +2,10 @@
 
 Google Cloud infrastructure deployment for https://github.com/kborovik/llmdoc
 
+## Deployment Stack
+
+![Deployment Diagram](docs/deployment.svg)
+
 # Pipeline Stages
 
 - Security static analysis
@@ -38,7 +42,3 @@ Work in progress
 ## Functional Testing
 
 Work in progress
-
-## Deployment Stack
-
-![Deployment Diagram](docs/deployment.svg)
