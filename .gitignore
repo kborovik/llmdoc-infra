@@ -2,3 +2,5 @@
 **/.terraform.lock.hcl
 **/terraform-output.json
 .vscode/**
+.elastic-helm-repo
+.vault-helm-repo

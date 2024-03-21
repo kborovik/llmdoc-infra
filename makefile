@@ -1,14 +1,10 @@
+.EXPORT_ALL_VARIABLES:
 .ONESHELL:
 .SILENT:
-.EXPORT_ALL_VARIABLES:
-.PHONY: default terraform kubernetes ansible
-
-default: settings
-
-root_path := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+MAKEFLAGS += --no-builtin-rules --no-builtin-variables
 
 ###############################################################################
-# Global Varitables
+# Variables
 ###############################################################################
 app_id := llmdoc
 
@@ -17,25 +13,49 @@ google_region ?= us-east5
 google_zone ?= ${google_region}-b
 
 gke_name ?= llmdoc-01
-
-terraform_dir ?= ${root_path}/terraform
-terraform_config ?= ${terraform_dir}/${google_project}.tfvars
-terraform_output ?= ${root_path}/terraform-output.json
-terraform_bucket ?= terraform-${google_project}
-terraform_prefix ?= ${app_id}
-
 PAUSE ?= 0
+
+###############################################################################
+# Settings
+###############################################################################
+
+VERSION := $(file < VERSION)
+
+root_path := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+terraform_dir := ${root_path}/terraform
+terraform_config := ${terraform_dir}/${google_project}.tfvars
+terraform_output := ${root_path}/terraform-output.json
+terraform_bucket := terraform-${google_project}
+terraform_prefix := ${app_id}
 
 ###############################################################################
 # Settings
 ###############################################################################
 settings:
 	$(call header,Common Settings)
+	echo "# VERSION: ${VERSION}"
 	echo "# app_id=${app_id}"
 	echo "# google_project=${google_project}"
 	echo "# google_region=${google_region}"
-	echo "# terraform_dir=${terraform_dir}"
-	echo
+
+###############################################################################
+# Repo Version
+###############################################################################
+
+version:
+	echo $$(date +%m.%d.%H%M) >| VERSION
+	git add VERSION
+	echo "VERSION: $$(cat VERSION)"
+
+commit: version
+	git add --all
+	git commit -m "$$(cat VERSION)"
+
+tag:
+	git tag $$(cat VERSION) -m "$$(cat VERSION)"
+	git push --tags
+
+release: commit tag
 
 ###############################################################################
 # Terraform
@@ -101,6 +121,53 @@ terraform-bucket-create:
 	gsutil mb -p $(google_project) -l ${google_region} -b on gs://${terraform_bucket} || true
 	gsutil ubla set on gs://${terraform_bucket}
 	gsutil versioning set on gs://${terraform_bucket}
+
+###############################################################################
+# Hashicorp Vault
+# Docs: https://developer.hashicorp.com/vault/docs/platform/k8s/vso
+###############################################################################
+
+vault_ver := 1.15.2
+vault_operator_ver := 0.5.2
+
+vault:
+
+.vault-helm-repo:
+	$(call header,Configure Hashicorp Helm repository)
+	helm repo add hashicorp https://helm.releases.hashicorp.com
+	helm repo update
+	touch $@
+
+vault-helm-list: .vault-helm-repo
+	$(call header,List Hashicorp Helm versions)
+	helm search repo hashicorp/vault
+
+vault-clean:
+	$(call header,Reset Vault Config)
+	rm -rf .vault-helm-repo
+
+###############################################################################
+# ElasticSearch
+# Docs: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html
+###############################################################################
+
+elastic_eck_ver := 2.11.1
+
+elastic:
+
+.elastic-helm-repo:
+	$(call header,Configure Elastic Helm repository)
+	helm repo add elastic https://helm.elastic.co
+	helm repo update
+	touch $@
+
+elastic-helm-list: .elastic-helm-repo
+	$(call header,List Elastic Helm versions)
+	helm search repo elastic/eck-operator
+
+elastic-clean:
+	$(call header,Reset Elastic Config)
+	rm -rf .elastic-helm
 
 ###############################################################################
 # Google CLI
@@ -202,4 +269,8 @@ endif
 
 ifeq ($(shell which terraform),)
 $(error ==> Missing terraform https://www.terraform.io/downloads <==)
+endif
+
+ifeq ($(shell which helm),)
+$(error ==> Missing helm https://helm.sh/ <==)
 endif
