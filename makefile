@@ -131,7 +131,6 @@ terraform-bucket-create:
 ###############################################################################
 
 vault_ver := 1.15.6
-vault_operator_ver := 0.5.2
 vault_namespace := vault
 vault_dir := kubernetes/vault
 vault_tls_key := $(shell gpg -dq secrets/tls.key.asc | base64 -w0)
@@ -172,6 +171,8 @@ vault-clean:
 # Hashicorp Vault Secrets Operator
 # Docs: https://developer.hashicorp.com/vault/docs/platform/k8s/vso
 ###############################################################################
+
+vault_opr_ver := 0.5.2
 
 ###############################################################################
 # ElasticSearch
