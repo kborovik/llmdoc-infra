@@ -1,0 +1,16 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vault-pdb
+  namespace: {{.Release.Namespace}}
+  labels:
+    app.kubernetes.io/name: {{.Chart.Name}}
+    app.kubernetes.io/instance: {{.Release.Name}}
+    app.kubernetes.io/version: {{.Values.appVersion}}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{.Chart.Name}}
+      app.kubernetes.io/instance: {{.Release.Name}}
+      app.kubernetes.io/version: {{.Values.appVersion}}

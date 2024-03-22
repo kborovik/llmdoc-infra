@@ -21,16 +21,18 @@ PAUSE ?= 0
 
 VERSION := $(file < VERSION)
 
-root_path := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-terraform_dir := ${root_path}/terraform
+root_dir := $(abspath .)
+
+terraform_dir := $(root_dir)/terraform
 terraform_config := ${terraform_dir}/${google_project}.tfvars
-terraform_output := ${root_path}/terraform-output.json
+terraform_output := $(root_dir)/terraform-output.json
 terraform_bucket := terraform-${google_project}
 terraform_prefix := ${app_id}
 
 ###############################################################################
 # Settings
 ###############################################################################
+
 settings:
 	$(call header,Common Settings)
 	echo "# VERSION: ${VERSION}"
@@ -43,7 +45,7 @@ settings:
 ###############################################################################
 
 version:
-	echo $$(date +%m.%d.%H%M) >| VERSION
+	echo $$(date +%y.%m.%d-%H%M) >| VERSION
 	git add VERSION
 	echo "VERSION: $$(cat VERSION)"
 
@@ -60,6 +62,7 @@ release: commit tag
 ###############################################################################
 # Terraform
 ###############################################################################
+
 terraform: terraform-plan prompt terraform-apply
 
 terraform-fmt: terraform-version
@@ -127,10 +130,27 @@ terraform-bucket-create:
 # Docs: https://developer.hashicorp.com/vault/docs/platform/k8s/vso
 ###############################################################################
 
-vault_ver := 1.15.2
+vault_ver := 1.15.6
 vault_operator_ver := 0.5.2
+vault_namespace := vault
+vault_dir := kubernetes/vault
+
+vault_vars += --set="appVersion=$(vault_ver)"
 
 vault:
+
+vault_template := kubernetes/vault/template.yaml
+
+vault-template:
+	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
+
+vault-install: vault-set-namespace
+	$(call header,Install Hashicorp Vault)
+	helm upgrade vault hashicorp/vault --namespace $(vault_namespace) $(vault_vars) \
+	--install --create-namespace --wait --timeout=2m --atomic
+
+vault-set-namespace:
+	kubectl config set-context --current --namespace $(vault_namespace)
 
 .vault-helm-repo:
 	$(call header,Configure Hashicorp Helm repository)
@@ -145,6 +165,11 @@ vault-helm-list: .vault-helm-repo
 vault-clean:
 	$(call header,Reset Vault Config)
 	rm -rf .vault-helm-repo
+
+###############################################################################
+# Hashicorp Vault Secrets Operator
+# Docs: https://developer.hashicorp.com/vault/docs/platform/k8s/vso
+###############################################################################
 
 ###############################################################################
 # ElasticSearch
@@ -189,6 +214,7 @@ gcloud-version:
 ###############################################################################
 # Kubernetes (GKE)
 ###############################################################################
+
 KUBECONFIG ?= ${HOME}/.kube/config
 
 gke-credentials:
@@ -201,6 +227,7 @@ gke-credentials:
 ###############################################################################
 # Checkov
 ###############################################################################
+
 checkov_args := --soft-fail --enable-secret-scan-all-files --compact --deep-analysis --directory .
 
 .checkov.baseline:
@@ -230,6 +257,7 @@ checkov-upgrade:
 ###############################################################################
 # Demo
 ###############################################################################
+
 demo: demo-checkov demo-terraform
 
 demo-checkov:
@@ -241,6 +269,7 @@ demo-terraform:
 ###############################################################################
 # Prompt
 ###############################################################################
+
 prompt:
 	echo
 	read -p "Continue deployment? (yes/no): " INP

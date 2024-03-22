@@ -1,0 +1,78 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-active
+  namespace: {{.Release.Namespace}}
+  labels:
+    app.kubernetes.io/name: {{.Chart.Name}}
+    app.kubernetes.io/instance: {{.Release.Name}}
+    app.kubernetes.io/version: {{.Values.appVersion}}
+  annotations: {}
+spec:
+  type: ClusterIP
+  externalTrafficPolicy: Local
+  publishNotReadyAddresses: false
+  ports:
+    - name: data
+      port: 8200
+      targetPort: 8200
+  selector:
+    vault-active: "true"
+    vault-sealed: "false"
+    app.kubernetes.io/name: {{.Chart.Name}}
+    app.kubernetes.io/instance: {{.Release.Name}}
+    app.kubernetes.io/version: {{.Values.appVersion}}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-standby
+  namespace: {{.Release.Namespace}}
+  labels:
+    app.kubernetes.io/name: {{.Chart.Name}}
+    app.kubernetes.io/instance: {{.Release.Name}}
+    app.kubernetes.io/version: {{.Values.appVersion}}
+spec:
+  type: ClusterIP
+  publishNotReadyAddresses: false
+  ports:
+    - name: data
+      port: 8200
+      targetPort: 8200
+    - name: cluster
+      port: 8201
+      targetPort: 8201
+  selector:
+    vault-active: "false"
+    vault-sealed: "false"
+    app.kubernetes.io/name: {{.Chart.Name}}
+    app.kubernetes.io/instance: {{.Release.Name}}
+    app.kubernetes.io/version: {{.Values.appVersion}}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-cluster
+  namespace: {{.Release.Namespace}}
+  labels:
+    app.kubernetes.io/name: {{.Chart.Name}}
+    app.kubernetes.io/instance: {{.Release.Name}}
+    app.kubernetes.io/version: {{.Values.appVersion}}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: data
+      port: 8200
+      targetPort: 8200
+    - name: cluster
+      port: 8201
+      targetPort: 8201
+  selector:
+    app.kubernetes.io/name: {{.Chart.Name}}
+    app.kubernetes.io/instance: {{.Release.Name}}
+    app.kubernetes.io/version: {{.Values.appVersion}}
