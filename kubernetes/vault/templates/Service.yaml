@@ -7,7 +7,6 @@ metadata:
   labels:
     app.kubernetes.io/name: {{.Chart.Name}}
     app.kubernetes.io/instance: {{.Release.Name}}
-    app.kubernetes.io/version: {{.Values.appVersion}}
   annotations: {}
 spec:
   type: ClusterIP
@@ -22,7 +21,6 @@ spec:
     vault-sealed: "false"
     app.kubernetes.io/name: {{.Chart.Name}}
     app.kubernetes.io/instance: {{.Release.Name}}
-    app.kubernetes.io/version: {{.Values.appVersion}}
 
 ---
 apiVersion: v1
@@ -33,7 +31,6 @@ metadata:
   labels:
     app.kubernetes.io/name: {{.Chart.Name}}
     app.kubernetes.io/instance: {{.Release.Name}}
-    app.kubernetes.io/version: {{.Values.appVersion}}
 spec:
   type: ClusterIP
   publishNotReadyAddresses: false
@@ -49,7 +46,6 @@ spec:
     vault-sealed: "false"
     app.kubernetes.io/name: {{.Chart.Name}}
     app.kubernetes.io/instance: {{.Release.Name}}
-    app.kubernetes.io/version: {{.Values.appVersion}}
 
 ---
 apiVersion: v1
@@ -60,7 +56,6 @@ metadata:
   labels:
     app.kubernetes.io/name: {{.Chart.Name}}
     app.kubernetes.io/instance: {{.Release.Name}}
-    app.kubernetes.io/version: {{.Values.appVersion}}
 spec:
   type: ClusterIP
   clusterIP: None
@@ -75,4 +70,3 @@ spec:
   selector:
     app.kubernetes.io/name: {{.Chart.Name}}
     app.kubernetes.io/instance: {{.Release.Name}}
-    app.kubernetes.io/version: {{.Values.appVersion}}
