@@ -65,7 +65,7 @@ spec:
             - name: VAULT_CLUSTER_ADDR
               value: https://$(VAULT_K8S_POD_NAME).vault-cluster:8201
             - name: VAULT_CACERT
-              value: /vault/userconfig/tls.ca
+              value: /vault/certs/tls.ca
           readinessProbe:
             exec:
               command: ["/bin/sh", "-ec", "vault status -tls-skip-verify"]
