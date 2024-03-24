@@ -2,7 +2,7 @@ disable_mlock     = true
 ui                = true
 default_lease_ttl = "168h"
 max_lease_ttl     = "720h"
-log_level         = "INFO"
+log_level         = "DEBUG"
 log_format        = "standard"
 
 listener "tcp" {

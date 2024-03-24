@@ -13,6 +13,9 @@ google_region ?= us-east5
 google_zone ?= ${google_region}-b
 
 gke_name ?= llmdoc-01
+
+gpg_key := 1A4A6FC0BB90A4B5F2A11031E577D405DD6ABEA5
+
 PAUSE ?= 0
 
 ###############################################################################
@@ -39,6 +42,7 @@ settings:
 	echo "# app_id=${app_id}"
 	echo "# google_project=${google_project}"
 	echo "# google_region=${google_region}"
+	echo "# gpg_key=${gpg_key}"
 
 ###############################################################################
 # Repo Version
@@ -63,7 +67,7 @@ release: commit tag
 # Terraform
 ###############################################################################
 
-terraform: terraform-plan prompt terraform-apply
+terraform: terraform-plan prompt terraform-apply gke-credentials
 
 terraform-fmt: terraform-version
 	$(call header,Check Terraform Code Format)
@@ -135,23 +139,49 @@ vault_namespace := vault
 vault_dir := kubernetes/vault
 vault_tls_key := $(shell gpg -dq secrets/tls.key.asc | base64 -w0)
 
-vault_vars += --set="appVersion=$(vault_ver)"
+vault_vars += --set="vault_ver=$(vault_ver)"
 vault_vars += --set="vault_tls_key=$(vault_tls_key)"
 
-vault:
+vault_unseal_keys := secrets/vault-unseal-keys.json
 
-vault_template := kubernetes/vault/template.yaml
+vault: vault-deploy
 
 vault-template:
 	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
 
-vault-install: vault-set-namespace
+vault-deploy: vault-set-namespace
 	$(call header,Install Hashicorp Vault)
-	helm upgrade vault hashicorp/vault --namespace $(vault_namespace) $(vault_vars) \
-	--install --create-namespace --wait --timeout=2m --atomic
+	helm upgrade vault $(vault_dir) --install --create-namespace --namespace $(vault_namespace) $(vault_vars)
+
+vault-uninstall:
+	$(call header,Uninstall Hashicorp Vault)
+	helm uninstall vault --namespace $(vault_namespace)
 
 vault-set-namespace:
 	kubectl config set-context --current --namespace $(vault_namespace)
+
+vault-init: $(vault_unseal_keys)
+
+$(vault_unseal_keys):
+	$(call header,Initialize Hashicorp Vault)
+	kubectl exec -n $(vault_namespace) vault-0 -- vault operator init -key-shares=5 -key-threshold=3 -format=json > $(@) \
+	&& gpg -a -e -r $(gpg_key) $(@) \
+	|| gpg $(@).asc
+
+vault-unseal:
+	for key in 0 1 2; do
+		kubectl exec -n $(vault_namespace) vault-0 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
+	done
+
+vault-join:
+	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft join -non-interactive https://vault-0.vault-cluster:8200
+# kubectl exec -n $(vault_namespace) vault-1 -- vault operator raft join -non-interactive https://vault-0.vault-cluster:8200
+#kubectl exec -n $(vault_namespace) vault-2 -- vault operator raft join https://vault-0.vault-cluster:8200
+
+vault-unseal-1:
+	for key in 0 1 2; do
+		kubectl exec -n $(vault_namespace) vault-1 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
+	done
 
 .vault-helm-repo:
 	$(call header,Configure Hashicorp Helm repository)
