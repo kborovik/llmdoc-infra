@@ -150,7 +150,7 @@ vault_disks := state/vault-disks-$(google_project).json
 vault_vars += --set="vault_ver=$(vault_ver)"
 vault_vars += --set="vault_tls_key=$(vault_tls_key)"
 
-vault: vault-deploy vault-running vault-init vault-unseal vault-ready vault-cluster-members
+vault: vault-deploy vault-running vault-init vault-unseal vault-ready vault-cluster-members vault-cluster-status
 
 vault-template:
 	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
@@ -162,7 +162,7 @@ vault-set-namespace:
 	kubectl config set-context --current --namespace $(vault_namespace)
 
 vault-deploy: vault-set-namespace
-	$(call header,Install Hashicorp Vault)
+	$(call header,Deploy Hashicorp Vault HELM Chart)
 	helm upgrade vault $(vault_dir) --install --create-namespace --namespace $(vault_namespace) $(vault_vars)
 
 vault-running:
@@ -209,15 +209,18 @@ vault-join: $(vault_unseal_keys)
 	kubectl exec -n $(vault_namespace) vault-1 -- vault operator raft join http://vault-0.cluster:8200
 	kubectl exec -n $(vault_namespace) vault-2 -- vault operator raft join http://vault-0.cluster:8200
 
-vault-cluster-status:
-	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=http://active:8200
-
-vault-cluster-members: vault-login
-	$(call header,Check Vault Cluster Members)
+vault-cluster-wait: vault-login
 	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w2 active 8200 2>/dev/null; do
 		echo "Waiting for Hashicorp Vault to be Ready..."
 		sleep 2
 	done
+
+vault-cluster-status: vault-cluster-wait
+	$(call header,Check Vault Cluster Status)
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=http://active:8200
+
+vault-cluster-members: vault-cluster-wait
+	$(call header,Check Vault Cluster Members)
 	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=http://active:8200
 
 vault-token: $(vault_token)
@@ -357,6 +360,9 @@ demo-checkov:
 
 demo-terraform:
 	asciinema rec -t "llmdocs-infra - terraform" -c "PAUSE=3 make terraform-plan prompt terraform-apply"
+
+demo-vault:
+	asciinema rec -t "llmdocs-infra - vault" -c "PAUSE=4 make settings vault"
 
 ###############################################################################
 # Prompt
