@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: vault-active
+  name: active
   namespace: {{.Release.Namespace}}
   labels:
     app.kubernetes.io/name: {{.Chart.Name}}
@@ -10,7 +10,6 @@ metadata:
   annotations: {}
 spec:
   type: ClusterIP
-  clusterIP: None
   publishNotReadyAddresses: false
   ports:
     - name: data
@@ -29,14 +28,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: vault-standby
+  name: standby
   namespace: {{.Release.Namespace}}
   labels:
     app.kubernetes.io/name: {{.Chart.Name}}
     app.kubernetes.io/instance: {{.Release.Name}}
 spec:
   type: ClusterIP
-  clusterIP: None
   publishNotReadyAddresses: false
   ports:
     - name: data
@@ -55,7 +53,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: vault-cluster
+  name: cluster
   namespace: {{.Release.Namespace}}
   labels:
     app.kubernetes.io/name: {{.Chart.Name}}

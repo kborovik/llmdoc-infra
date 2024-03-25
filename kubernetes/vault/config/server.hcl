@@ -2,11 +2,11 @@ disable_mlock     = true
 ui                = true
 default_lease_ttl = "168h"
 max_lease_ttl     = "720h"
-log_level         = "DEBUG"
+log_level         = "INFO"
 log_format        = "standard"
 
 listener "tcp" {
-  tls_disable        = false
+  tls_disable        = true
   address            = "0.0.0.0:8200"
   cluster_address    = "0.0.0.0:8201"
   tls_cert_file      = "/vault/certs/tls.crt"

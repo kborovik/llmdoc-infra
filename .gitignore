@@ -4,3 +4,4 @@
 .vscode/**
 .elastic-helm-repo
 .vault-helm-repo
+.vault-token

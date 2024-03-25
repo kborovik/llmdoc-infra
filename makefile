@@ -138,29 +138,29 @@ vault_ver := 1.15.6
 vault_namespace := vault
 vault_dir := kubernetes/vault
 vault_tls_key := $(shell gpg -dq secrets/tls.key.asc | base64 -w0)
+vault-token := $(HOME)/.vault-token
+vault_unseal_keys := secrets/vault-unseal-keys.json
+vault-disks := state/vault-disks.json
 
 vault_vars += --set="vault_ver=$(vault_ver)"
 vault_vars += --set="vault_tls_key=$(vault_tls_key)"
 
-vault_unseal_keys := secrets/vault-unseal-keys.json
-
 vault: vault-deploy
+
+vault-init: $(vault_unseal_keys)
 
 vault-template:
 	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
+
+vault-template-original:
+	helm template vault  hashicorp/vault --namespace $(vault_namespace) -f vault-values.yaml
 
 vault-deploy: vault-set-namespace
 	$(call header,Install Hashicorp Vault)
 	helm upgrade vault $(vault_dir) --install --create-namespace --namespace $(vault_namespace) $(vault_vars)
 
-vault-uninstall:
-	$(call header,Uninstall Hashicorp Vault)
-	helm uninstall vault --namespace $(vault_namespace)
-
 vault-set-namespace:
 	kubectl config set-context --current --namespace $(vault_namespace)
-
-vault-init: $(vault_unseal_keys)
 
 $(vault_unseal_keys):
 	$(call header,Initialize Hashicorp Vault)
@@ -171,17 +171,37 @@ $(vault_unseal_keys):
 vault-unseal:
 	for key in 0 1 2; do
 		kubectl exec -n $(vault_namespace) vault-0 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
+		kubectl exec -n $(vault_namespace) vault-1 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
+		kubectl exec -n $(vault_namespace) vault-2 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
 	done
 
 vault-join:
-	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft join -non-interactive https://vault-0.vault-cluster:8200
-# kubectl exec -n $(vault_namespace) vault-1 -- vault operator raft join -non-interactive https://vault-0.vault-cluster:8200
-#kubectl exec -n $(vault_namespace) vault-2 -- vault operator raft join https://vault-0.vault-cluster:8200
+	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft join http://vault-0.cluster:8200
+	kubectl exec -n $(vault_namespace) vault-1 -- vault operator raft join http://vault-0.cluster:8200
+	kubectl exec -n $(vault_namespace) vault-2 -- vault operator raft join http://vault-0.cluster:8200
 
-vault-unseal-1:
-	for key in 0 1 2; do
-		kubectl exec -n $(vault_namespace) vault-1 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
-	done
+vault-status:
+	kubectl exec -n $(vault_namespace) vault-0 -- vault status
+
+vault-members: vault-login
+	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft list-peers
+
+vault-token: $(vault-token)
+$(vault-token):
+	jq -r '.root_token' secrets/vault-unseal-keys.json | tee $(@)
+
+vault-login: $(vault-token)
+	kubectl cp -n $(vault_namespace) $(vault-token) vault-0:/home/vault/.vault-token
+
+$(vault-disks):
+	gcloud compute disks list --format=json > $(@)
+
+vault-disks-list: $(vault-disks)
+	jq '[.[] | {name: .name, lastAttachTimestamp: .lastAttachTimestamp, selfLink: .selfLink}]' $(vault-disks)
+
+vault-disks-delete: $(vault-disks)
+	$(call header,Delete Vault Disks)
+	jq '.[].selfLink' $(vault-disks) | xargs -I {} gcloud compute disks delete {} --quiet && rm -rf $(vault-disks) || exit 1
 
 .vault-helm-repo:
 	$(call header,Configure Hashicorp Helm repository)
@@ -193,9 +213,13 @@ vault-helm-list: .vault-helm-repo
 	$(call header,List Hashicorp Helm versions)
 	helm search repo hashicorp/vault
 
-vault-clean:
+vault-uninstall:
+	$(call header,Uninstall Hashicorp Vault)
+	helm uninstall vault --namespace $(vault_namespace)
+
+vault-clean: vault-uninstall
 	$(call header,Reset Vault Config)
-	rm -rf .vault-helm-repo
+	rm -rf .vault-helm-repo $(vault-token) $(vault_unseal_keys) $(vault_unseal_keys).asc
 
 ###############################################################################
 # Hashicorp Vault Secrets Operator
