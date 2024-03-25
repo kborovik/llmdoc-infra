@@ -26,12 +26,6 @@ VERSION := $(file < VERSION)
 
 root_dir := $(abspath .)
 
-terraform_dir := $(root_dir)/terraform
-terraform_config := ${terraform_dir}/${google_project}.tfvars
-terraform_output := $(root_dir)/terraform-output.json
-terraform_bucket := terraform-${google_project}
-terraform_prefix := ${app_id}
-
 ###############################################################################
 # Settings
 ###############################################################################
@@ -66,6 +60,12 @@ release: commit tag
 ###############################################################################
 # Terraform
 ###############################################################################
+
+terraform_dir := $(root_dir)/terraform
+terraform_config := ${terraform_dir}/${google_project}.tfvars
+terraform_output := $(root_dir)/state/terraform-$(google_project).json
+terraform_bucket := terraform-${google_project}
+terraform_prefix := ${app_id}
 
 terraform: terraform-plan prompt terraform-apply gke-credentials
 
@@ -138,9 +138,9 @@ vault_ver := 1.15.6
 vault_namespace := vault
 vault_dir := kubernetes/vault
 vault_tls_key := $(shell gpg -dq secrets/tls.key.asc | base64 -w0)
-vault-token := $(HOME)/.vault-token
+vault_token := $(HOME)/.vault-token
 vault_unseal_keys := secrets/vault-unseal-keys.json
-vault-disks := state/vault-disks.json
+vault_disks := state/vault-disks-$(google_project).json
 
 vault_vars += --set="vault_ver=$(vault_ver)"
 vault_vars += --set="vault_tls_key=$(vault_tls_key)"
@@ -186,22 +186,22 @@ vault-status:
 vault-members: vault-login
 	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft list-peers
 
-vault-token: $(vault-token)
-$(vault-token):
+vault-token: $(vault_token)
+$(vault_token):
 	jq -r '.root_token' secrets/vault-unseal-keys.json | tee $(@)
 
-vault-login: $(vault-token)
-	kubectl cp -n $(vault_namespace) $(vault-token) vault-0:/home/vault/.vault-token
+vault-login: $(vault_token)
+	kubectl cp -n $(vault_namespace) $(vault_token) vault-0:/home/vault/.vault-token
 
-$(vault-disks):
+$(vault_disks):
 	gcloud compute disks list --format=json > $(@)
 
-vault-disks-list: $(vault-disks)
-	jq '[.[] | {name: .name, lastAttachTimestamp: .lastAttachTimestamp, selfLink: .selfLink}]' $(vault-disks)
+vault-disks-list: $(vault_disks)
+	jq '[.[] | {name: .name, lastAttachTimestamp: .lastAttachTimestamp, selfLink: .selfLink}]' $(vault_disks)
 
-vault-disks-delete: $(vault-disks)
+vault-disks-delete: $(vault_disks)
 	$(call header,Delete Vault Disks)
-	jq '.[].selfLink' $(vault-disks) | xargs -I {} gcloud compute disks delete {} --quiet && rm -rf $(vault-disks) || exit 1
+	jq '.[].selfLink' $(vault_disks) | xargs -I {} gcloud compute disks delete {} --quiet && echo '[]' >| $(vault_disks) || exit 1
 
 .vault-helm-repo:
 	$(call header,Configure Hashicorp Helm repository)
@@ -219,7 +219,8 @@ vault-uninstall:
 
 vault-clean: vault-uninstall
 	$(call header,Reset Vault Config)
-	rm -rf .vault-helm-repo $(vault-token) $(vault_unseal_keys) $(vault_unseal_keys).asc
+	$(MAKE) vault-disks-delete
+	rm -rf .vault-helm-repo $(vault_token) $(vault_unseal_keys) $(vault_unseal_keys).asc
 
 ###############################################################################
 # Hashicorp Vault Secrets Operator
