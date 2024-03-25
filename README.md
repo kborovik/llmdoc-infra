@@ -39,6 +39,10 @@ make terraform
 
 ### HashiCorp Vault
 
+```shell
+make vault
+```
+
 [![asciicast](https://asciinema.org/a/649021.svg)](https://asciinema.org/a/649021)
 
 ### Document Question Answering

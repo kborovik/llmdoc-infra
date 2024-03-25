@@ -252,10 +252,11 @@ vault-helm-list: .vault-helm-repo
 
 vault-uninstall:
 	$(call header,Uninstall Hashicorp Vault)
-	helm uninstall vault --namespace $(vault_namespace)
+	helm uninstall vault --namespace $(vault_namespace) --wait
 
-vault-clean: vault-uninstall
+vault-clean:
 	$(call header,Reset Vault Config)
+	set -e
 	$(MAKE) vault-disks-delete
 	rm -rf .vault-helm-repo $(vault_token) $(vault_unseal_keys) $(vault_unseal_keys).asc
 
