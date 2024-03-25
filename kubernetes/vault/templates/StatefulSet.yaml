@@ -51,7 +51,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: HOSTNAME
-              value: $(VAULT_K8S_POD_NAME).cluster.$(VAULT_K8S_NAMESPACE).svc.cluster.local
+              value: $(VAULT_K8S_POD_NAME).cluster
             - name: HOME
               value: /home/vault
             - name: VAULT_ADDR

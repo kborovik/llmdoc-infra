@@ -6,15 +6,14 @@ MAKEFLAGS += --no-builtin-rules --no-builtin-variables
 ###############################################################################
 # Variables
 ###############################################################################
-app_id := llmdoc
 
-google_project ?= lab5-llmdoc-dev1
-google_region ?= us-east5
-google_zone ?= ${google_region}-b
+deploy_target ?= dev1
 
-gke_name ?= llmdoc-01
-
-gpg_key := 1A4A6FC0BB90A4B5F2A11031E577D405DD6ABEA5
+ifeq ($(deploy_target),dev1)
+google_project := lab5-llmdoc-dev1
+google_region := us-east5
+google_zone := ${google_region}-b
+endif
 
 PAUSE ?= 0
 
@@ -22,7 +21,13 @@ PAUSE ?= 0
 # Settings
 ###############################################################################
 
+app_id := llmdoc
+
+gke_name := $(app_id)-01
+
 VERSION := $(file < VERSION)
+
+gpg_key := 1A4A6FC0BB90A4B5F2A11031E577D405DD6ABEA5
 
 root_dir := $(abspath .)
 
@@ -31,12 +36,12 @@ root_dir := $(abspath .)
 ###############################################################################
 
 settings:
-	$(call header,Common Settings)
-	echo "# VERSION: ${VERSION}"
-	echo "# app_id=${app_id}"
-	echo "# google_project=${google_project}"
-	echo "# google_region=${google_region}"
-	echo "# gpg_key=${gpg_key}"
+	$(call header,Settings)
+	echo "# VERSION: $(VERSION)"
+	echo "# deploy_target=$(deploy_target)"
+	echo "# google_project=$(google_project)"
+	echo "# google_region=$(google_region)"
+	echo "# gpg_key=$(gpg_key)"
 
 ###############################################################################
 # Repo Version
@@ -145,46 +150,75 @@ vault_disks := state/vault-disks-$(google_project).json
 vault_vars += --set="vault_ver=$(vault_ver)"
 vault_vars += --set="vault_tls_key=$(vault_tls_key)"
 
-vault: vault-deploy
-
-vault-init: $(vault_unseal_keys)
+vault: vault-deploy vault-running vault-init vault-unseal vault-ready vault-cluster-members
 
 vault-template:
 	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
 
-vault-template-original:
-	helm template vault  hashicorp/vault --namespace $(vault_namespace) -f vault-values.yaml
+vault-template-original: .vault-helm-repo
+	helm template vault  hashicorp/vault --namespace $(vault_namespace) --set="injector.enabled=false"
+
+vault-set-namespace:
+	kubectl config set-context --current --namespace $(vault_namespace)
 
 vault-deploy: vault-set-namespace
 	$(call header,Install Hashicorp Vault)
 	helm upgrade vault $(vault_dir) --install --create-namespace --namespace $(vault_namespace) $(vault_vars)
 
-vault-set-namespace:
-	kubectl config set-context --current --namespace $(vault_namespace)
+vault-running:
+	for pod in 0 1 2; do
+		running=$$(kubectl get pods vault-$$pod -n $(vault_namespace) -o jsonpath='{.status.phase}')
+		while [ "$$running" != "Running" ]; do
+			echo "Waiting for Hashicorp Vault vault-$$pod to be Running..."
+			sleep 2
+			running=$$(kubectl get pods vault-$$pod -n $(vault_namespace) -o jsonpath='{.status.phase}')
+		done
+		echo "Hashicorp Vault vault-$$pod is Running"
+	done
 
+vault-ready:
+	echo "Waiting for Hashicorp Vault to be Ready..."
+	ready=""
+	while [ "$$ready" != "3" ]; do
+		ready=$$(kubectl get statefulsets vault -n $(vault_namespace) --output json | jq '.status.readyReplicas')
+		sleep 2
+	done
+	echo "Hashicorp Vault is Ready"
+
+vault-init: $(vault_unseal_keys)
 $(vault_unseal_keys):
 	$(call header,Initialize Hashicorp Vault)
-	kubectl exec -n $(vault_namespace) vault-0 -- vault operator init -key-shares=5 -key-threshold=3 -format=json > $(@) \
+	gpg --yes $(@).asc \
+	&& exit 0 \
+	|| kubectl exec -n $(vault_namespace) vault-0 -- vault operator init -key-shares=5 -key-threshold=3 -format=json > $(@) \
 	&& gpg -a -e -r $(gpg_key) $(@) \
-	|| gpg $(@).asc
 
-vault-unseal:
+vault-unseal: $(vault_unseal_keys)
+	$(call header,Unseal Hashicorp Vault)
 	for key in 0 1 2; do
 		kubectl exec -n $(vault_namespace) vault-0 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
 		kubectl exec -n $(vault_namespace) vault-1 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
 		kubectl exec -n $(vault_namespace) vault-2 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
 	done
 
-vault-join:
+vault-join: $(vault_unseal_keys)
+	for key in 0 1 2; do
+		kubectl exec -n $(vault_namespace) vault-0 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
+	done
 	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft join http://vault-0.cluster:8200
 	kubectl exec -n $(vault_namespace) vault-1 -- vault operator raft join http://vault-0.cluster:8200
 	kubectl exec -n $(vault_namespace) vault-2 -- vault operator raft join http://vault-0.cluster:8200
 
-vault-status:
-	kubectl exec -n $(vault_namespace) vault-0 -- vault status
+vault-cluster-status:
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=http://active:8200
 
-vault-members: vault-login
-	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft list-peers
+vault-cluster-members: vault-login
+	$(call header,Check Vault Cluster Members)
+	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w2 active 8200 2>/dev/null; do
+		echo "Waiting for Hashicorp Vault to be Ready..."
+		sleep 2
+	done
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=http://active:8200
 
 vault-token: $(vault_token)
 $(vault_token):
@@ -194,14 +228,14 @@ vault-login: $(vault_token)
 	kubectl cp -n $(vault_namespace) $(vault_token) vault-0:/home/vault/.vault-token
 
 $(vault_disks):
-	gcloud compute disks list --format=json > $(@)
+	gcloud compute disks list --filter='pvc-' --format=json > $(@)
 
 vault-disks-list: $(vault_disks)
 	jq '[.[] | {name: .name, lastAttachTimestamp: .lastAttachTimestamp, selfLink: .selfLink}]' $(vault_disks)
 
 vault-disks-delete: $(vault_disks)
 	$(call header,Delete Vault Disks)
-	jq '.[].selfLink' $(vault_disks) | xargs -I {} gcloud compute disks delete {} --quiet && echo '[]' >| $(vault_disks) || exit 1
+	jq '.[].selfLink' $(vault_disks) | xargs -I {} gcloud compute disks delete {} --quiet && rm -rf $(vault_disks) || exit 1
 
 .vault-helm-repo:
 	$(call header,Configure Hashicorp Helm repository)
@@ -341,9 +375,9 @@ prompt:
 ###############################################################################
 define header
 echo
-echo "########################################################################"
+echo "###############################################################################"
 echo "# $(1)"
-echo "########################################################################"
+echo "###############################################################################"
 sleep ${PAUSE}
 endef
 

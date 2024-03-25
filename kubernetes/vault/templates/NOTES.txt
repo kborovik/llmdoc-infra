@@ -1,6 +1,2 @@
-
-Your release is named {{ .Release.Name }}. To learn more about the release, try:
-
-  $ helm status {{ .Release.Name }}
-  $ helm get manifest {{ .Release.Name }}
-
+VERSION: {{ .Values.vault_ver }}
+VAULT_ADDR: https://vault.gcp.lab5.ca
