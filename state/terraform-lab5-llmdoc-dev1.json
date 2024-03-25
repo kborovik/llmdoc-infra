@@ -1,0 +1,7 @@
+{
+  "google_project": {
+    "sensitive": false,
+    "type": "string",
+    "value": "lab5-llmdoc-dev1"
+  }
+}

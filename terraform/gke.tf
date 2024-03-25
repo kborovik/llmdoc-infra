@@ -35,8 +35,9 @@ resource "google_container_cluster" "gke1" {
 
   private_cluster_config {
     enable_private_nodes    = true
-    enable_private_endpoint = true
+    enable_private_endpoint = false
     master_ipv4_cidr_block  = "172.31.255.240/28"
+
     master_global_access_config {
       enabled = true
     }
@@ -50,12 +51,17 @@ resource "google_container_cluster" "gke1" {
 
   master_authorized_networks_config {
     cidr_blocks {
-      cidr_block = google_compute_subnetwork.subnet1.ip_cidr_range
+      display_name = "Bell Canada AS577"
+      cidr_block   = "74.15.0.0/16"
+    }
+    cidr_blocks {
+      display_name = "GCP Internal Network"
+      cidr_block   = google_compute_subnetwork.subnet1.ip_cidr_range
     }
   }
 
   network_policy {
-    enabled = true
+    enabled = false
   }
 
   ip_allocation_policy {

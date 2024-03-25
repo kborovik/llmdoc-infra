@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: server-config
+  namespace: {{.Release.Namespace}}
+  labels:
+    app.kubernetes.io/name: {{.Chart.Name}}
+    app.kubernetes.io/instance: {{.Release.Name}}
+data:
+  server.hcl: |-
+{{ .Files.Get "config/server.hcl" | indent 4}}

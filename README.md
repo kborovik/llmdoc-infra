@@ -37,6 +37,12 @@ make terraform
 
 ## Kubernetes (HELM)
 
+### HashiCorp Vault
+
+[![asciicast](https://asciinema.org/a/649021.svg)](https://asciinema.org/a/649021)
+
+### Document Question Answering
+
 Work in progress
 
 ## Functional Testing

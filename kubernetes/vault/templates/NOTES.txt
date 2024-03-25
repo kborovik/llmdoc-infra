@@ -1,0 +1,2 @@
+VERSION: {{ .Values.vault_ver }}
+VAULT_ADDR: https://vault.gcp.lab5.ca
