@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1709.93666599" height="765.3331420000001" font-family="Consolas, Menlo, 'Bitstream Vera Sans Mono', monospace, 'Powerline Symbols'" font-size="14px">
+  <style>
+    .br { font-weight: bold }
+    .fa { fill-opacity: 0.5 }
+    .it { font-style: italic }
+    .un { text-decoration: underline }
+  </style>
+
+  <rect width="100%" height="100%" style="fill: #121314" rx="4" ry="4"></rect>
+
+  <svg x="8.42333333" y="9.333331000000001" class="default-text-fill">
+    <g style="shape-rendering: optimizeSpeed">
+
+        <rect x="0.0" y="93.33331000000001" width="8.42333333" height="18.666662000000002" style="fill: #d9d9d9"></rect>
+
+
+    </g>
+
+    <text style="fill: #cccccc">
+      <tspan y="0.0">
+        <tspan dy="1em" x="0.0">
+make[1]: Entering directory &#39;/home/kb/github/llmdoc-infra&#39;
+        </tspan>
+      </tspan><tspan y="37.333324000000005">
+        <tspan dy="1em" x="0.0">
+########################################################################
+        </tspan>
+      </tspan><tspan y="55.99998600000001">
+        <tspan dy="1em" x="0.0">
+# Run Checkov with baseline
+        </tspan>
+      </tspan><tspan y="74.66664800000001">
+        <tspan dy="1em" x="0.0">
+########################################################################
+        </tspan>
+      </tspan>
+    </text>
+  </svg>
+
+  <g transform="translate(-50 -50)">
+    <svg x="50%" y="50%" width="100" height="100">
+      <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 866.0254037844387 866.0254037844387" style="filter: drop-shadow(0px 0px 5px rgba(0, 0, 0, 0.4))">
+  <defs>
+    <mask id="small-triangle-mask">
+      <rect width="100%" height="100%" fill="white"></rect>
+      <polygon points="508.01270189221935 433.01270189221935, 208.0127018922194 259.8076211353316, 208.01270189221927 606.217782649107" fill="black">
+      </polygon>
+    </mask>
+  </defs>
+  <polygon points="808.0127018922194 433.01270189221935, 58.01270189221947 -1.1368683772161603e-13, 58.01270189221913 866.0254037844386" mask="url(#small-triangle-mask)" fill="white">
+  </polygon>
+  <polyline points="481.2177826491071 333.0127018922194, 134.80762113533166 533.0127018922194" stroke="white" stroke-width="90">
+  </polyline>
+</svg>
+    </svg>
+  </g>
+</svg>

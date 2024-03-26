@@ -23,7 +23,7 @@ https://www.checkov.io/
 make checkov
 ```
 
-[![asciicast](https://asciinema.org/a/643320.svg)](https://asciinema.org/a/643320)
+[![asciicast](docs/643320.svg)](https://asciinema.org/a/643320)
 
 ## Terraform
 
