@@ -33,7 +33,7 @@ Work in progress
 make terraform
 ```
 
-[![asciicast](https://asciinema.org/a/642869.svg)](https://asciinema.org/a/642869)
+[![asciicast](docs/642869.svg)](https://asciinema.org/a/642869)
 
 ## Kubernetes (HELM)
 
@@ -43,7 +43,7 @@ make terraform
 make vault
 ```
 
-[![asciicast](https://asciinema.org/a/649021.svg)](https://asciinema.org/a/649021)
+[![asciicast](docs/649021.svg)](https://asciinema.org/a/649021)
 
 ### Document Question Answering
 
