@@ -156,7 +156,10 @@ vault-template:
 	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
 
 vault-template-original: .vault-helm-repo
-	helm template vault  hashicorp/vault --namespace $(vault_namespace) --set="injector.enabled=false"
+	helm template vault  hashicorp/vault --namespace $(vault_namespace) \
+	--set="injector.enabled=false" \
+	--set="server.ha.enabled=true" \
+	--set="server.ha.replicas=3"
 
 vault-set-namespace:
 	kubectl config set-context --current --namespace $(vault_namespace)
@@ -205,9 +208,9 @@ vault-join: $(vault_unseal_keys)
 	for key in 0 1 2; do
 		kubectl exec -n $(vault_namespace) vault-0 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
 	done
-	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft join http://vault-0.cluster:8200
-	kubectl exec -n $(vault_namespace) vault-1 -- vault operator raft join http://vault-0.cluster:8200
-	kubectl exec -n $(vault_namespace) vault-2 -- vault operator raft join http://vault-0.cluster:8200
+	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
+	kubectl exec -n $(vault_namespace) vault-1 -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
+	kubectl exec -n $(vault_namespace) vault-2 -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
 
 vault-cluster-wait: vault-login
 	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w2 active 8200 2>/dev/null; do
@@ -217,11 +220,11 @@ vault-cluster-wait: vault-login
 
 vault-cluster-status: vault-cluster-wait
 	$(call header,Check Vault Cluster Status)
-	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=http://active:8200
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=https://active:8200
 
 vault-cluster-members: vault-cluster-wait
 	$(call header,Check Vault Cluster Members)
-	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=http://active:8200
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=https://active:8200
 
 vault-token: $(vault_token)
 $(vault_token):

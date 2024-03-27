@@ -28,31 +28,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: standby
-  namespace: {{.Release.Namespace}}
-  labels:
-    app.kubernetes.io/name: {{.Chart.Name}}
-    app.kubernetes.io/instance: {{.Release.Name}}
-spec:
-  type: ClusterIP
-  publishNotReadyAddresses: false
-  ports:
-    - name: data
-      port: 8200
-      targetPort: 8200
-    - name: cluster
-      port: 8201
-      targetPort: 8201
-  selector:
-    vault-active: "false"
-    vault-sealed: "false"
-    app.kubernetes.io/name: {{.Chart.Name}}
-    app.kubernetes.io/instance: {{.Release.Name}}
-
----
-apiVersion: v1
-kind: Service
-metadata:
   name: cluster
   namespace: {{.Release.Namespace}}
   labels:
