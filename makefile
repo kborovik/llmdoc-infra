@@ -379,7 +379,7 @@ demo-terraform:
 	asciinema rec -t "llmdocs-infra - terraform" -c "PAUSE=3 make terraform-plan prompt terraform-apply"
 
 demo-vault:
-	asciinema rec -t "llmdocs-infra - vault" -c "PAUSE=4 make settings vault"
+	asciinema rec -t "llmdocs-infra - vault" -c "PAUSE=3 make settings vault"
 
 ###############################################################################
 # Prompt
