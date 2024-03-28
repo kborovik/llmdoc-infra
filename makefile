@@ -60,7 +60,7 @@ tag:
 	git tag $$(cat VERSION) -m "$$(cat VERSION)"
 	git push --tags
 
-release: commit tag
+release: tag
 
 ###############################################################################
 # Terraform
@@ -150,7 +150,9 @@ vault_disks := state/vault-disks-$(google_project).json
 vault_vars += --set="vault_ver=$(vault_ver)"
 vault_vars += --set="vault_tls_key=$(vault_tls_key)"
 
-vault: vault-deploy vault-running vault-init vault-unseal vault-ready vault-cluster-members vault-cluster-status
+vault: vault-deploy vault-running vault-init vault-unseal vault-ready vault-cluster-members vault-cluster-status vault-disks-list
+
+vault-restart: vault-pod-restart vault-running vault-unseal vault-ready vault-cluster-members vault-cluster-status
 
 vault-template:
 	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
@@ -168,6 +170,14 @@ vault-deploy: vault-set-namespace
 	$(call header,Deploy Hashicorp Vault HELM Chart)
 	helm upgrade vault $(vault_dir) --install --create-namespace --namespace $(vault_namespace) $(vault_vars)
 
+vault-pod-restart: vault-set-namespace
+	$(call header,Restart Hashicorp Vault)
+	for pod in 0 1 2; do
+		kubectl delete pod vault-$$pod -n $(vault_namespace) --wait=true
+	done
+	echo "Hashicorp Vault pods restarted. Waiting for pods to be Running..."
+	sleep 20
+
 vault-running:
 	for pod in 0 1 2; do
 		running=$$(kubectl get pods vault-$$pod -n $(vault_namespace) -o jsonpath='{.status.phase}')
@@ -180,13 +190,13 @@ vault-running:
 	done
 
 vault-ready:
-	echo "Waiting for Hashicorp Vault to be Ready..."
+	echo "Waiting for Hashicorp Vault StatefulSet to be Ready..."
 	ready=""
 	while [ "$$ready" != "3" ]; do
 		ready=$$(kubectl get statefulsets vault -n $(vault_namespace) --output json | jq '.status.readyReplicas')
 		sleep 2
 	done
-	echo "Hashicorp Vault is Ready"
+	echo "Hashicorp Vault StatefulSet is Ready"
 
 vault-init: $(vault_unseal_keys)
 $(vault_unseal_keys):
@@ -214,8 +224,8 @@ vault-join: $(vault_unseal_keys)
 
 vault-cluster-wait: vault-login
 	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w2 active 8200 2>/dev/null; do
-		echo "Waiting for Hashicorp Vault to be Ready..."
-		sleep 2
+		echo "Waiting for Hashicorp Vault Cluster to reconcile..."
+		sleep 5
 	done
 
 vault-cluster-status: vault-cluster-wait
@@ -237,6 +247,7 @@ $(vault_disks):
 	gcloud compute disks list --filter='pvc-' --format=json > $(@)
 
 vault-disks-list: $(vault_disks)
+	$(call header,List Vault Disks)
 	jq '[.[] | {name: .name, lastAttachTimestamp: .lastAttachTimestamp, selfLink: .selfLink}]' $(vault_disks)
 
 vault-disks-delete: $(vault_disks)
