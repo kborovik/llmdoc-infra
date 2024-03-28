@@ -179,6 +179,7 @@ vault-pod-restart: vault-set-namespace
 	sleep 20
 
 vault-running:
+	$(call header,Wait for Hashicorp Vault pods to be Running)
 	for pod in 0 1 2; do
 		running=$$(kubectl get pods vault-$$pod -n $(vault_namespace) -o jsonpath='{.status.phase}')
 		while [ "$$running" != "Running" ]; do
@@ -190,7 +191,7 @@ vault-running:
 	done
 
 vault-ready:
-	echo "Waiting for Hashicorp Vault StatefulSet to be Ready..."
+	$(call header,Wait for Hashicorp Vault StatefulSet to be Ready)
 	ready=""
 	while [ "$$ready" != "3" ]; do
 		ready=$$(kubectl get statefulsets vault -n $(vault_namespace) --output json | jq '.status.readyReplicas')
@@ -223,6 +224,7 @@ vault-join: $(vault_unseal_keys)
 	kubectl exec -n $(vault_namespace) vault-2 -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
 
 vault-cluster-wait: vault-login
+	$(call header,Wait for Hashicorp Vault Cluster to reconcile)
 	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w2 active 8200 2>/dev/null; do
 		echo "Waiting for Hashicorp Vault Cluster to reconcile..."
 		sleep 5
