@@ -254,7 +254,8 @@ vault-disks-list: $(vault_disks)
 
 vault-disks-delete: $(vault_disks)
 	$(call header,Delete Vault Disks)
-	jq '.[].selfLink' $(vault_disks) | xargs -I {} gcloud compute disks delete {} --quiet && rm -rf $(vault_disks) || exit 1
+	jq '.[].selfLink' $(vault_disks) | xargs -I {} gcloud compute disks delete {} --quiet
+	rm -rf $(vault_disks)
 
 .vault-helm-repo:
 	$(call header,Configure Hashicorp Helm repository)
@@ -268,12 +269,10 @@ vault-helm-list: .vault-helm-repo
 
 vault-uninstall:
 	$(call header,Uninstall Hashicorp Vault)
-	helm uninstall vault --namespace $(vault_namespace) --wait
+	helm uninstall vault --namespace $(vault_namespace) --wait=true
 
-vault-clean:
+vault-clean: vault-disks-delete
 	$(call header,Reset Vault Config)
-	set -e
-	$(MAKE) vault-disks-delete
 	rm -rf .vault-helm-repo $(vault_token) $(vault_unseal_keys) $(vault_unseal_keys).asc
 
 ###############################################################################
