@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1364.57999946" height="709.333156" font-family="Consolas, Menlo, 'Bitstream Vera Sans Mono', monospace, 'Powerline Symbols'" font-size="14px">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1364.57999946" height="765.3331420000001" font-family="Consolas, Menlo, 'Bitstream Vera Sans Mono', monospace, 'Powerline Symbols'" font-size="14px">
   <style>
     .br { font-weight: bold }
     .fa { fill-opacity: 0.5 }
@@ -12,7 +12,7 @@
   <svg x="8.42333333" y="9.333331000000001" class="default-text-fill">
     <g style="shape-rendering: optimizeSpeed">
 
-        <rect x="0.0" y="671.9998320000001" width="8.42333333" height="18.666662000000002" style="fill: #d9d9d9"></rect>
+        <rect x="0.0" y="727.999818" width="8.42333333" height="18.666662000000002" style="fill: #d9d9d9"></rect>
 
 
     </g>
@@ -20,219 +20,237 @@
     <text style="fill: #cccccc">
       <tspan y="0.0">
         <tspan dy="1em" x="0.0">
-Initialized
-        </tspan><tspan x="160.04333327">
-true
+Active Node Address
+        </tspan><tspan x="202.15999992000002">
+https://vault-0.cluster:8200
         </tspan>
       </tspan><tspan y="18.666662000000002">
         <tspan dy="1em" x="0.0">
-Sealed
-        </tspan><tspan x="160.04333327">
-true
+Raft Committed Index
+        </tspan><tspan x="202.15999992000002">
+226
         </tspan>
       </tspan><tspan y="37.333324000000005">
         <tspan dy="1em" x="0.0">
-Total Shares
-        </tspan><tspan x="160.04333327">
-5
+Raft Applied Index
+        </tspan><tspan x="202.15999992000002">
+226
         </tspan>
       </tspan><tspan y="55.99998600000001">
         <tspan dy="1em" x="0.0">
-Threshold
-        </tspan><tspan x="160.04333327">
-3
+Key
+        </tspan><tspan x="202.15999992000002">
+Value
         </tspan>
       </tspan><tspan y="74.66664800000001">
         <tspan dy="1em" x="0.0">
-Unseal Progress
-        </tspan><tspan x="160.04333327">
-1/3
+---
+        </tspan><tspan x="202.15999992000002">
+-----
         </tspan>
       </tspan><tspan y="93.33331000000001">
         <tspan dy="1em" x="0.0">
-Unseal Nonce
-        </tspan><tspan x="160.04333327">
-cf3ddbac-b73a-805b-1918-c0c4cadd2f83
+Seal Type
+        </tspan><tspan x="202.15999992000002">
+shamir
         </tspan>
       </tspan><tspan y="111.99997200000001">
         <tspan dy="1em" x="0.0">
-Version
-        </tspan><tspan x="160.04333327">
-1.15.6
+Initialized
+        </tspan><tspan x="202.15999992000002">
+true
         </tspan>
       </tspan><tspan y="130.66663400000002">
         <tspan dy="1em" x="0.0">
-Build Date
-        </tspan><tspan x="160.04333327">
-2024-02-28T17:07:34Z
+Sealed
+        </tspan><tspan x="202.15999992000002">
+false
         </tspan>
       </tspan><tspan y="149.33329600000002">
         <tspan dy="1em" x="0.0">
-Storage Type
-        </tspan><tspan x="160.04333327">
-raft
+Total Shares
+        </tspan><tspan x="202.15999992000002">
+5
         </tspan>
       </tspan><tspan y="167.99995800000002">
         <tspan dy="1em" x="0.0">
-HA Enabled
-        </tspan><tspan x="160.04333327">
-true
+Threshold
+        </tspan><tspan x="202.15999992000002">
+3
         </tspan>
       </tspan><tspan y="186.66662000000002">
         <tspan dy="1em" x="0.0">
-Key
-        </tspan><tspan x="160.04333327">
-Value
+Version
+        </tspan><tspan x="202.15999992000002">
+1.15.6
         </tspan>
       </tspan><tspan y="205.33328200000003">
         <tspan dy="1em" x="0.0">
----
-        </tspan><tspan x="160.04333327">
------
+Build Date
+        </tspan><tspan x="202.15999992000002">
+2024-02-28T17:07:34Z
         </tspan>
       </tspan><tspan y="223.99994400000003">
         <tspan dy="1em" x="0.0">
-Seal Type
-        </tspan><tspan x="160.04333327">
-shamir
+Storage Type
+        </tspan><tspan x="202.15999992000002">
+raft
         </tspan>
       </tspan><tspan y="242.66660600000003">
         <tspan dy="1em" x="0.0">
-Initialized
-        </tspan><tspan x="160.04333327">
-true
+Cluster Name
+        </tspan><tspan x="202.15999992000002">
+vault-cluster-1
         </tspan>
       </tspan><tspan y="261.33326800000003">
         <tspan dy="1em" x="0.0">
-Sealed
-        </tspan><tspan x="160.04333327">
-true
+Cluster ID
+        </tspan><tspan x="202.15999992000002">
+dcf7f447-1697-b298-b282-1932c9cd9aec
         </tspan>
       </tspan><tspan y="279.99993">
         <tspan dy="1em" x="0.0">
-Total Shares
-        </tspan><tspan x="160.04333327">
-5
+HA Enabled
+        </tspan><tspan x="202.15999992000002">
+true
         </tspan>
       </tspan><tspan y="298.66659200000004">
         <tspan dy="1em" x="0.0">
-Threshold
-        </tspan><tspan x="160.04333327">
-3
+HA Cluster
+        </tspan><tspan x="202.15999992000002">
+https://vault-0.cluster:8201
         </tspan>
       </tspan><tspan y="317.333254">
         <tspan dy="1em" x="0.0">
-Unseal Progress
-        </tspan><tspan x="160.04333327">
-1/3
+HA Mode
+        </tspan><tspan x="202.15999992000002">
+standby
         </tspan>
       </tspan><tspan y="335.99991600000004">
         <tspan dy="1em" x="0.0">
-Unseal Nonce
-        </tspan><tspan x="160.04333327">
-c7e87d9f-eaaf-415e-d193-4f441715dde0
+Active Node Address
+        </tspan><tspan x="202.15999992000002">
+https://vault-0.cluster:8200
         </tspan>
       </tspan><tspan y="354.666578">
         <tspan dy="1em" x="0.0">
-Version
-        </tspan><tspan x="160.04333327">
-1.15.6
+Raft Committed Index
+        </tspan><tspan x="202.15999992000002">
+226
         </tspan>
       </tspan><tspan y="373.33324000000005">
         <tspan dy="1em" x="0.0">
-Build Date
-        </tspan><tspan x="160.04333327">
-2024-02-28T17:07:34Z
+Raft Applied Index
+        </tspan><tspan x="202.15999992000002">
+226
         </tspan>
       </tspan><tspan y="391.999902">
         <tspan dy="1em" x="0.0">
-Storage Type
-        </tspan><tspan x="160.04333327">
-raft
+Key
+        </tspan><tspan x="202.15999992000002">
+Value
         </tspan>
       </tspan><tspan y="410.66656400000005">
         <tspan dy="1em" x="0.0">
-HA Enabled
-        </tspan><tspan x="160.04333327">
-true
+---
+        </tspan><tspan x="202.15999992000002">
+-----
         </tspan>
       </tspan><tspan y="429.333226">
         <tspan dy="1em" x="0.0">
-Key
-        </tspan><tspan x="160.04333327">
-Value
+Seal Type
+        </tspan><tspan x="202.15999992000002">
+shamir
         </tspan>
       </tspan><tspan y="447.99988800000006">
         <tspan dy="1em" x="0.0">
----
-        </tspan><tspan x="160.04333327">
------
+Initialized
+        </tspan><tspan x="202.15999992000002">
+true
         </tspan>
       </tspan><tspan y="466.66655000000003">
         <tspan dy="1em" x="0.0">
-Seal Type
-        </tspan><tspan x="160.04333327">
-shamir
+Sealed
+        </tspan><tspan x="202.15999992000002">
+false
         </tspan>
       </tspan><tspan y="485.33321200000006">
         <tspan dy="1em" x="0.0">
-Initialized
-        </tspan><tspan x="160.04333327">
-true
+Total Shares
+        </tspan><tspan x="202.15999992000002">
+5
         </tspan>
       </tspan><tspan y="503.99987400000003">
         <tspan dy="1em" x="0.0">
-Sealed
-        </tspan><tspan x="160.04333327">
-true
+Threshold
+        </tspan><tspan x="202.15999992000002">
+3
         </tspan>
       </tspan><tspan y="522.6665360000001">
         <tspan dy="1em" x="0.0">
-Total Shares
-        </tspan><tspan x="160.04333327">
-5
+Version
+        </tspan><tspan x="202.15999992000002">
+1.15.6
         </tspan>
       </tspan><tspan y="541.333198">
         <tspan dy="1em" x="0.0">
-Threshold
-        </tspan><tspan x="160.04333327">
-3
+Build Date
+        </tspan><tspan x="202.15999992000002">
+2024-02-28T17:07:34Z
         </tspan>
       </tspan><tspan y="559.99986">
         <tspan dy="1em" x="0.0">
-Unseal Progress
-        </tspan><tspan x="160.04333327">
-1/3
+Storage Type
+        </tspan><tspan x="202.15999992000002">
+raft
         </tspan>
       </tspan><tspan y="578.6665220000001">
         <tspan dy="1em" x="0.0">
-Unseal Nonce
-        </tspan><tspan x="160.04333327">
-c683df49-97bb-f607-aeb6-5076e7a79deb
+Cluster Name
+        </tspan><tspan x="202.15999992000002">
+vault-cluster-1
         </tspan>
       </tspan><tspan y="597.3331840000001">
         <tspan dy="1em" x="0.0">
-Version
-        </tspan><tspan x="160.04333327">
-1.15.6
+Cluster ID
+        </tspan><tspan x="202.15999992000002">
+dcf7f447-1697-b298-b282-1932c9cd9aec
         </tspan>
       </tspan><tspan y="615.999846">
         <tspan dy="1em" x="0.0">
-Build Date
-        </tspan><tspan x="160.04333327">
-2024-02-28T17:07:34Z
+HA Enabled
+        </tspan><tspan x="202.15999992000002">
+true
         </tspan>
       </tspan><tspan y="634.666508">
         <tspan dy="1em" x="0.0">
-Storage Type
-        </tspan><tspan x="160.04333327">
-raft
+HA Cluster
+        </tspan><tspan x="202.15999992000002">
+https://vault-0.cluster:8201
         </tspan>
       </tspan><tspan y="653.33317">
         <tspan dy="1em" x="0.0">
-HA Enabled
-        </tspan><tspan x="160.04333327">
-true
+HA Mode
+        </tspan><tspan x="202.15999992000002">
+active
+        </tspan>
+      </tspan><tspan y="671.9998320000001">
+        <tspan dy="1em" x="0.0">
+Active Since
+        </tspan><tspan x="202.15999992000002">
+2024-03-28T00:23:27.938040214Z
+        </tspan>
+      </tspan><tspan y="690.6664940000001">
+        <tspan dy="1em" x="0.0">
+Raft Committed Index
+        </tspan><tspan x="202.15999992000002">
+226
+        </tspan>
+      </tspan><tspan y="709.333156">
+        <tspan dy="1em" x="0.0">
+Raft Applied Index
+        </tspan><tspan x="202.15999992000002">
+226
         </tspan>
       </tspan>
     </text>

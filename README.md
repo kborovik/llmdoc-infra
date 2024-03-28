@@ -43,7 +43,7 @@ make terraform
 make vault
 ```
 
-[![asciicast](docs/649021.svg)](https://asciinema.org/a/649021)
+[![asciicast](docs/649438.svg)](https://asciinema.org/a/649438)
 
 ### Document Question Answering
 
