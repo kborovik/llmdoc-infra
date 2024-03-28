@@ -23,7 +23,7 @@ https://www.checkov.io/
 make checkov
 ```
 
-[![asciicast](https://asciinema.org/a/643320.svg)](https://asciinema.org/a/643320)
+[![asciicast](docs/643320.svg)](https://asciinema.org/a/643320)
 
 ## Terraform
 
@@ -33,13 +33,17 @@ Work in progress
 make terraform
 ```
 
-[![asciicast](https://asciinema.org/a/642869.svg)](https://asciinema.org/a/642869)
+[![asciicast](docs/642869.svg)](https://asciinema.org/a/642869)
 
 ## Kubernetes (HELM)
 
 ### HashiCorp Vault
 
-[![asciicast](https://asciinema.org/a/649021.svg)](https://asciinema.org/a/649021)
+```shell
+make vault
+```
+
+[![asciicast](docs/649438.svg)](https://asciinema.org/a/649438)
 
 ### Document Question Answering
 

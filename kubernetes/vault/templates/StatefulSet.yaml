@@ -55,11 +55,11 @@ spec:
             - name: HOME
               value: /home/vault
             - name: VAULT_ADDR
-              value: http://$(HOSTNAME):8200
+              value: https://$(HOSTNAME):8200
             - name: VAULT_API_ADDR
-              value: http://$(HOSTNAME):8200
+              value: https://$(HOSTNAME):8200
             - name: VAULT_CLUSTER_ADDR
-              value: http://$(HOSTNAME):8201
+              value: https://$(HOSTNAME):8201
             - name: VAULT_CLIENT_CERT
               value: /vault/certs/tls.crt
             - name: VAULT_CLIENT_KEY
