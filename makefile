@@ -360,22 +360,20 @@ gke-clean:
 # Checkov
 ###############################################################################
 
-checkov_args := --soft-fail --enable-secret-scan-all-files --compact --deep-analysis --directory .
-
 .checkov.baseline:
 	echo "{}" >| $@
 
 checkov: .checkov.baseline
 	$(call header,Run Checkov with baseline)
-	checkov --baseline .checkov.baseline ${checkov_args}
+	checkov --baseline .checkov.baseline
 
 checkov-all:
 	$(call header,Run Checkov NO baseline)
-	checkov --quiet ${checkov_args}
+	checkov --quiet
 
 checkov-baseline:
 	$(call header,Create Checkov baseline)
-	checkov --quiet --create-baseline ${checkov_args}
+	checkov --quiet --create-baseline
 
 checkov-clean:
 	rm -rf .checkov.baseline
