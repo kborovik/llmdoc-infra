@@ -44,6 +44,14 @@ settings:
 	echo "# gpg_key=$(gpg_key)"
 
 ###############################################################################
+# End-to-End Pipeline
+###############################################################################
+
+all: checkov terraform-apply gke-credentials vault
+
+clean: vault-clean terraform-clean gke-clean
+
+###############################################################################
 # Repo Version
 ###############################################################################
 
@@ -71,6 +79,8 @@ terraform_config := ${terraform_dir}/${google_project}.tfvars
 terraform_output := $(root_dir)/state/terraform-$(google_project).json
 terraform_bucket := terraform-${google_project}
 terraform_prefix := ${app_id}
+
+.PHONY: terraform
 
 terraform: terraform-plan prompt terraform-apply gke-credentials
 
@@ -103,7 +113,7 @@ terraform-destroy: terraform-init
 	terraform apply -destroy -input=false -refresh=true -var-file="${terraform_config}"
 
 terraform-clean:
-	$(call header,Run Terraform Clean)
+	$(call header,Delete Terraform providers and state)
 	-rm -rf ${terraform_dir}/.terraform ${terraform_dir}/.terraform.lock.hcl
 
 terraform-show:
@@ -150,9 +160,9 @@ vault_disks := state/vault-disks-$(google_project).json
 vault_vars += --set="vault_ver=$(vault_ver)"
 vault_vars += --set="vault_tls_key=$(vault_tls_key)"
 
-vault: vault-deploy vault-running vault-init vault-unseal vault-ready vault-cluster-members vault-cluster-status vault-disks-list
+vault: vault-deploy vault-pod-running vault-init vault-unseal vault-pod-ready vault-cluster-members vault-cluster-status vault-disks-list
 
-vault-restart: vault-pod-restart vault-running vault-unseal vault-ready vault-cluster-members vault-cluster-status
+vault-restart: vault-pod-restart vault-pod-running vault-unseal vault-pod-ready vault-cluster-members vault-cluster-status
 
 vault-template:
 	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
@@ -178,7 +188,7 @@ vault-pod-restart: vault-set-namespace
 	echo "Hashicorp Vault pods restarted. Waiting for pods to be Running..."
 	sleep 20
 
-vault-running:
+vault-pod-running:
 	$(call header,Wait for Hashicorp Vault pods to be Running)
 	for pod in 0 1 2; do
 		running=$$(kubectl get pods vault-$$pod -n $(vault_namespace) -o jsonpath='{.status.phase}')
@@ -190,7 +200,7 @@ vault-running:
 		echo "Hashicorp Vault vault-$$pod is Running"
 	done
 
-vault-ready:
+vault-pod-ready:
 	$(call header,Wait for Hashicorp Vault StatefulSet to be Ready)
 	ready=""
 	while [ "$$ready" != "3" ]; do
@@ -200,6 +210,7 @@ vault-ready:
 	echo "Hashicorp Vault StatefulSet is Ready"
 
 vault-init: $(vault_unseal_keys)
+
 $(vault_unseal_keys):
 	$(call header,Initialize Hashicorp Vault)
 	gpg --yes $(@).asc \
@@ -209,23 +220,23 @@ $(vault_unseal_keys):
 
 vault-unseal: $(vault_unseal_keys)
 	$(call header,Unseal Hashicorp Vault)
-	for key in 0 1 2; do
-		kubectl exec -n $(vault_namespace) vault-0 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
-		kubectl exec -n $(vault_namespace) vault-1 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
-		kubectl exec -n $(vault_namespace) vault-2 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
+	for pod in 0 1 2; do
+		for key in 0 1 2; do
+			kubectl exec -n $(vault_namespace) vault-$$pod -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
+		done
 	done
 
 vault-join: $(vault_unseal_keys)
 	for key in 0 1 2; do
 		kubectl exec -n $(vault_namespace) vault-0 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
 	done
-	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
-	kubectl exec -n $(vault_namespace) vault-1 -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
-	kubectl exec -n $(vault_namespace) vault-2 -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
+	for pod in 0 1 2; do
+		kubectl exec -n $(vault_namespace) vault-$$pod -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
+	done
 
 vault-cluster-wait: vault-login
 	$(call header,Wait for Hashicorp Vault Cluster to reconcile)
-	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w2 active 8200 2>/dev/null; do
+	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w1 active 8200 2>/dev/null; do
 		echo "Waiting for Hashicorp Vault Cluster to reconcile..."
 		sleep 5
 	done
@@ -239,6 +250,7 @@ vault-cluster-members: vault-cluster-wait
 	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=https://active:8200
 
 vault-token: $(vault_token)
+
 $(vault_token):
 	jq -r '.root_token' secrets/vault-unseal-keys.json | tee $(@)
 
@@ -252,10 +264,9 @@ vault-disks-list: $(vault_disks)
 	$(call header,List Vault Disks)
 	jq '[.[] | {name: .name, lastAttachTimestamp: .lastAttachTimestamp, selfLink: .selfLink}]' $(vault_disks)
 
-vault-disks-delete: $(vault_disks)
+vault-disks-delete:
 	$(call header,Delete Vault Disks)
 	jq '.[].selfLink' $(vault_disks) | xargs -I {} gcloud compute disks delete {} --quiet
-	rm -rf $(vault_disks)
 
 .vault-helm-repo:
 	$(call header,Configure Hashicorp Helm repository)
@@ -269,11 +280,15 @@ vault-helm-list: .vault-helm-repo
 
 vault-uninstall:
 	$(call header,Uninstall Hashicorp Vault)
-	helm uninstall vault --namespace $(vault_namespace) --wait=true
+	helm uninstall vault --namespace $(vault_namespace)
 
-vault-clean: vault-disks-delete
-	$(call header,Reset Vault Config)
-	rm -rf .vault-helm-repo $(vault_token) $(vault_unseal_keys) $(vault_unseal_keys).asc
+vault-clean:
+	$(call header,Delete Vault token and keys)
+	rm -rf .vault-helm-repo $(vault_token) $(vault_unseal_keys)
+
+vault-purge: vault-clean
+	$(call header,Purge Vault data)
+	rm -rf $(vault_disks) $(vault_unseal_keys).asc
 
 ###############################################################################
 # Hashicorp Vault Secrets Operator
@@ -308,6 +323,7 @@ elastic-clean:
 ###############################################################################
 # Google CLI
 ###############################################################################
+
 gcloud-auth:
 	$(call header,Configure Google CLI)
 	gcloud auth application-default login
@@ -328,12 +344,17 @@ gcloud-version:
 
 KUBECONFIG ?= ${HOME}/.kube/config
 
-gke-credentials:
+gke-credentials: $(KUBECONFIG)
+
+$(KUBECONFIG):
 	$(call header,Get GKE Credentials)
 	set -e
-	-rm -f ${KUBECONFIG}
 	gcloud container clusters get-credentials --zone=${google_region} ${gke_name}
 	kubectl cluster-info
+
+gke-clean:
+	$(call header,Delete GKE credentials)
+	rm -rf $(KUBECONFIG)
 
 ###############################################################################
 # Checkov
@@ -369,13 +390,11 @@ checkov-upgrade:
 # Demo
 ###############################################################################
 
-demo: demo-checkov demo-terraform
-
 demo-checkov:
-	asciinema rec -t "llmdocs-infra - checkov" -c "PAUSE=3 make checkov"
+	asciinema rec -t "llmdocs-infra - checkov" -c "PAUSE=3 make settings checkov"
 
 demo-terraform:
-	asciinema rec -t "llmdocs-infra - terraform" -c "PAUSE=3 make terraform-plan prompt terraform-apply"
+	asciinema rec -t "llmdocs-infra - terraform" -c "PAUSE=3 make settings terraform-plan prompt terraform-apply"
 
 demo-vault:
 	asciinema rec -t "llmdocs-infra - vault" -c "PAUSE=3 make settings vault"

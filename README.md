@@ -2,16 +2,17 @@
 
 Google Cloud infrastructure deployment for https://github.com/kborovik/llmdoc
 
+## Pipeline Design Principles
+
+- Maximize short feedback development cycle by keeping all dependencies in the project
+- Uncompromised end-to-end deployment and testing with a single command `make all`
+- Manage deployment targets difference with configuration files `google_project.tfvars`
+- Track code base changes with `git branch`
+- Track code base deployment state with `git tag`
+
 ## Deployment Stack
 
 ![Deployment Diagram](docs/deployment.svg)
-
-# Pipeline Stages
-
-- Security static analysis
-- Terraform deployment
-- Kubernetes deployment
-- Functional testing
 
 ## Security Static Analysis
 
