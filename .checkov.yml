@@ -7,7 +7,7 @@ directory:
   - terraform
 skip-path:
   - vault/vault-ha/templates
-download-external-modules: true
+download-external-modules: false
 enable-secret-scan-all-files: true
 evaluate-variables: true
 external-modules-download-path: .external_modules
