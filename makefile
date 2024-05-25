@@ -136,6 +136,7 @@ vault_tls_key := $(shell gpg -dq secrets/tls.key.asc | base64 -w0)
 vault_token := $(HOME)/.vault-token
 vault_unseal_keys := secrets/vault-unseal-keys.json
 vault_disks := state/vault-disks-$(google_project).json
+vault_kube_dns := vault.vault.svc.cluster.local
 
 vault_vars += --set="vault_ver=$(vault_ver)"
 vault_vars += --set="vault_tls_key=$(vault_tls_key)"
@@ -216,18 +217,18 @@ vault-join: $(vault_unseal_keys)
 
 vault-cluster-wait: vault-login
 	$(call header,Wait for Hashicorp Vault Cluster to reconcile)
-	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w1 active 8200 2>/dev/null; do
+	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w1 $(vault_kube_dns) 8200 2>/dev/null; do
 		echo "Waiting for Hashicorp Vault Cluster to reconcile..."
 		sleep 5
 	done
 
 vault-cluster-status: vault-cluster-wait
 	$(call header,Check Vault Cluster Status)
-	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=https://active:8200
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=https://$(vault_kube_dns):8200
 
 vault-cluster-members: vault-cluster-wait
 	$(call header,Check Vault Cluster Members)
-	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=https://active:8200
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=https://$(vault_kube_dns):8200
 
 vault-token: $(vault_token)
 
@@ -275,7 +276,7 @@ vso_namespace := vault-secrets-operator
 vso_values := $(root_dir)/kubernetes/vault-secrets-operator/values.yaml
 
 vso_settings += --set=defaultVaultConnection.enabled=true
-vso_settings += --set=defaultVaultConnection.address=https://active.vault.svc.cluster.local:8200
+vso_settings += --set=defaultVaultConnection.address=https://vault.vault.svc.cluster.local:8200
 vso_settings += --set=defaultVaultConnection.skipTLSVerify=true
 
 vso-template: .hashicorp-helm-repo
