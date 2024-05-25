@@ -276,7 +276,7 @@ vso_namespace := vault-secrets-operator
 vso_values := $(root_dir)/kubernetes/vault-secrets-operator/values.yaml
 
 vso_settings += --set=defaultVaultConnection.enabled=true
-vso_settings += --set=defaultVaultConnection.address=https://vault.vault.svc.cluster.local:8200
+vso_settings += --set=defaultVaultConnection.address=https://$(vault_kube_dns):8200
 vso_settings += --set=defaultVaultConnection.skipTLSVerify=true
 
 vso-template: .hashicorp-helm-repo
