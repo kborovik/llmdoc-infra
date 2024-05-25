@@ -1,6 +1,7 @@
 .EXPORT_ALL_VARIABLES:
 .ONESHELL:
 .SILENT:
+
 MAKEFLAGS += --no-builtin-rules --no-builtin-variables
 
 ###############################################################################
@@ -14,8 +15,6 @@ google_project := lab5-llmdoc-dev1
 google_region := us-east5
 google_zone := ${google_region}-b
 endif
-
-PAUSE ?= 0
 
 ###############################################################################
 # Settings
@@ -37,38 +36,19 @@ root_dir := $(abspath .)
 
 settings:
 	$(call header,Settings)
-	echo "# VERSION: $(VERSION)"
-	echo "# deploy_target=$(deploy_target)"
-	echo "# google_project=$(google_project)"
-	echo "# google_region=$(google_region)"
-	echo "# gpg_key=$(gpg_key)"
+	$(call var,VERSION,$(VERSION))
+	$(call var,deploy_target,$(deploy_target))
+	$(call var,google_project,$(google_project))
+	$(call var,google_region,$(google_region))
+	$(call var,gpg_key,$(gpg_key))
 
 ###############################################################################
 # End-to-End Pipeline
 ###############################################################################
 
-all: checkov terraform-apply gke-credentials vault
+all: terraform vault
 
 clean: vault-clean terraform-clean gke-clean
-
-###############################################################################
-# Repo Version
-###############################################################################
-
-version:
-	echo $$(date +%y.%m.%d-%H%M) >| VERSION
-	git add VERSION
-	echo "VERSION: $$(cat VERSION)"
-
-commit: version
-	git add --all
-	git commit -m "$$(cat VERSION)"
-
-tag:
-	git tag $$(cat VERSION) -m "$$(cat VERSION)"
-	git push --tags
-
-release: tag
 
 ###############################################################################
 # Terraform
@@ -82,7 +62,7 @@ terraform_prefix := ${app_id}
 
 .PHONY: terraform
 
-terraform: terraform-plan prompt terraform-apply gke-credentials
+terraform: terraform-plan prompt terraform-apply
 
 terraform-fmt: terraform-version
 	$(call header,Check Terraform Code Format)
@@ -252,7 +232,7 @@ vault-cluster-members: vault-cluster-wait
 vault-token: $(vault_token)
 
 $(vault_token):
-	jq -r '.root_token' secrets/vault-unseal-keys.json | tee $(@)
+	jq -r '.root_token' secrets/vault-unseal-keys.json >| $(@)
 
 vault-login: $(vault_token)
 	kubectl cp -n $(vault_namespace) $(vault_token) vault-0:/home/vault/.vault-token
@@ -324,9 +304,13 @@ elastic-clean:
 # Google CLI
 ###############################################################################
 
+google: gcloud-auth gcloud-config
+
 gcloud-auth:
 	$(call header,Configure Google CLI)
-	gcloud auth application-default login
+	set -e
+	gcloud auth revoke --all
+	gcloud auth login --update-adc
 
 gcloud-config:
 	set -e
@@ -334,26 +318,24 @@ gcloud-config:
 	gcloud config set compute/region ${google_region}
 	gcloud config list
 
-gcloud-version:
-	$(call header,gcloud version)
-	gcloud version
-
 ###############################################################################
 # Kubernetes (GKE)
 ###############################################################################
 
 KUBECONFIG ?= ${HOME}/.kube/config
 
-gke-credentials: $(KUBECONFIG)
+kube: kube-clean kube-auth
+
+kube-auth: $(KUBECONFIG)
 
 $(KUBECONFIG):
-	$(call header,Get GKE Credentials)
+	$(call header,Get Kubernetes credentials)
 	set -e
 	gcloud container clusters get-credentials --zone=${google_region} ${gke_name}
 	kubectl cluster-info
 
-gke-clean:
-	$(call header,Delete GKE credentials)
+kube-clean:
+	$(call header,Delete Kubernetes credentials)
 	rm -rf $(KUBECONFIG)
 
 ###############################################################################
@@ -385,40 +367,57 @@ checkov-upgrade:
 	pipx upgrade checkov
 
 ###############################################################################
-# Demo
+# Colors and Headers
 ###############################################################################
 
-demo-checkov:
-	asciinema rec -t "llmdocs-infra - checkov" -c "PAUSE=3 make settings checkov"
+black := \033[30m
+red := \033[31m
+green := \033[32m
+yellow := \033[33m
+blue := \033[34m
+magenta := \033[35m
+cyan := \033[36m
+white := \033[37m
+reset := \033[0m
 
-demo-terraform:
-	asciinema rec -t "llmdocs-infra - terraform" -c "PAUSE=3 make settings terraform-plan prompt terraform-apply"
+define header
+echo "$(blue)==> $(1) <==$(reset)"
+endef
 
-demo-vault:
-	asciinema rec -t "llmdocs-infra - vault" -c "PAUSE=3 make settings vault"
+define help
+echo "$(green)$(1)$(reset) - $(white)$(2)$(reset)"
+endef
 
-###############################################################################
-# Prompt
-###############################################################################
+define var
+echo "$(magenta)$(1)$(reset): $(yellow)$(2)$(reset)"
+endef
 
 prompt:
-	echo
-	read -p "Continue deployment? (yes/no): " INP
-	if [ "$${INP}" != "yes" ]; then
-	  echo "Deployment aborted"
-	  exit 1
-	fi
+	echo -n "$(blue)Continue?$(reset) $(yellow)(yes/no)$(reset)"
+	read -p ": " answer && [ "$$answer" = "yes" ] || exit 1
 
 ###############################################################################
-# Functions
+# Repo Version
 ###############################################################################
-define header
-echo
-echo "###############################################################################"
-echo "# $(1)"
-echo "###############################################################################"
-sleep ${PAUSE}
-endef
+
+.PHONY: version
+
+version:
+	version=$$(date +%Y.%m.%d-%H%M)
+	echo "$$version" >| VERSION
+	$(call header,Version: $$(cat VERSION))
+	git add VERSION
+
+commit: version
+	git add --all
+	git commit -m "$$(cat VERSION)"
+
+tag: commit
+	version=$$(date +%Y.%m.%d)
+	git tag "$$version" -m "Version: $$version"
+
+release: tag
+	git push --tags --force
 
 ###############################################################################
 # Errors
