@@ -271,8 +271,6 @@ vault-purge: vault-clean
 ###############################################################################
 vso_chart_version := 0.6.0
 
-vso_namespace := vault-secrets-operator
-
 vso_values := $(root_dir)/kubernetes/vault-secrets-operator/values.yaml
 
 vso_settings += --set=defaultVaultConnection.enabled=true
@@ -282,13 +280,17 @@ vso_settings += --set=defaultVaultConnection.skipTLSVerify=true
 vso-template: .hashicorp-helm-repo
 	$(call header,Template Hashicorp Vault Secrets Operator)
 	helm template vso hashicorp/vault-secrets-operator \
-	--version $(vso_chart_version) --namespace $(vso_namespace) $(vso_settings)
+	--version $(vso_chart_version) --namespace $(vault_namespace) $(vso_settings)
 
 vso-deploy: .hashicorp-helm-repo
 	$(call header,Deploy Hashicorp Vault Secrets Operator)
 	helm upgrade vso hashicorp/vault-secrets-operator \
-	--version $(vso_chart_version) --namespace $(vso_namespace) \
+	--version $(vso_chart_version) --namespace $(vault_namespace) \
 	--install --create-namespace --wait --timeout=10m --atomic $(vso_settings)
+
+vso-uninstall:
+	$(call header,Uninstall Hashicorp Vault Secrets Operator)
+	helm uninstall vso --namespace $(vault_namespace)
 
 ###############################################################################
 # ElasticSearch
