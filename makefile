@@ -147,12 +147,6 @@ vault-restart: vault-pod-restart vault-pod-running vault-unseal vault-pod-ready 
 vault-template:
 	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
 
-vault-template-original: .vault-helm-repo
-	helm template vault  hashicorp/vault --namespace $(vault_namespace) \
-	--set="injector.enabled=false" \
-	--set="server.ha.enabled=true" \
-	--set="server.ha.replicas=3"
-
 vault-set-namespace:
 	kubectl config set-context --current --namespace $(vault_namespace)
 
@@ -274,8 +268,32 @@ vault-purge: vault-clean
 # Hashicorp Vault Secrets Operator
 # Docs: https://developer.hashicorp.com/vault/docs/platform/k8s/vso
 ###############################################################################
+vso_repo := https://helm.releases.hashicorp.com
+vso_chart_version := 0.6.0
 
-vault_opr_ver := 0.5.2
+vso_namespace := vault-secrets-operator
+
+vso_values := $(root_dir)/kubernetes/vault-secrets-operator/values.yaml
+
+vso_settings += --set=defaultVaultConnection.enabled=true
+vso_settings += --set=defaultVaultConnection.address=https://active.vault.svc.cluster.local:8200
+vso_settings += --set=defaultVaultConnection.skipTLSVerify=true
+
+vso-repo:
+	$(call header,Add Hashicorp Helm repository)
+	helm repo add hashicorp $(vso_repo)
+	helm repo update
+
+vso-template:
+	$(call header,Template Hashicorp Vault Secrets Operator)
+	helm template vso hashicorp/vault-secrets-operator \
+	--version $(vso_chart_version) --namespace $(vso_namespace) $(vso_settings)
+
+vso-deploy: vso-repo
+	$(call header,Deploy Hashicorp Vault Secrets Operator)
+	helm upgrade vso hashicorp/vault-secrets-operator \
+	--version $(vso_chart_version) --namespace $(vso_namespace) \
+	--install --create-namespace --wait --timeout=10m --atomic $(vso_settings)
 
 ###############################################################################
 # ElasticSearch
