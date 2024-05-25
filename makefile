@@ -144,6 +144,12 @@ vault: vault-deploy vault-pod-running vault-init vault-unseal vault-pod-ready va
 
 vault-restart: vault-pod-restart vault-pod-running vault-unseal vault-pod-ready vault-cluster-members vault-cluster-status
 
+.hashicorp-helm-repo:
+	$(call header,Configure Hashicorp Helm repository)
+	helm repo add hashicorp https://helm.releases.hashicorp.com
+	helm repo update
+	touch $@
+
 vault-template:
 	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
 
@@ -242,13 +248,7 @@ vault-disks-delete:
 	$(call header,Delete Vault Disks)
 	jq '.[].selfLink' $(vault_disks) | xargs -I {} gcloud compute disks delete {} --quiet
 
-.vault-helm-repo:
-	$(call header,Configure Hashicorp Helm repository)
-	helm repo add hashicorp https://helm.releases.hashicorp.com
-	helm repo update
-	touch $@
-
-vault-helm-list: .vault-helm-repo
+vault-helm-list: .hashicorp-helm-repo
 	$(call header,List Hashicorp Helm versions)
 	helm search repo hashicorp/vault
 
@@ -258,7 +258,7 @@ vault-uninstall:
 
 vault-clean:
 	$(call header,Delete Vault token and keys)
-	rm -rf .vault-helm-repo $(vault_token) $(vault_unseal_keys)
+	rm -rf .hashicorp-helm-repo $(vault_token) $(vault_unseal_keys)
 
 vault-purge: vault-clean
 	$(call header,Purge Vault data)
@@ -268,7 +268,6 @@ vault-purge: vault-clean
 # Hashicorp Vault Secrets Operator
 # Docs: https://developer.hashicorp.com/vault/docs/platform/k8s/vso
 ###############################################################################
-vso_repo := https://helm.releases.hashicorp.com
 vso_chart_version := 0.6.0
 
 vso_namespace := vault-secrets-operator
@@ -279,17 +278,12 @@ vso_settings += --set=defaultVaultConnection.enabled=true
 vso_settings += --set=defaultVaultConnection.address=https://active.vault.svc.cluster.local:8200
 vso_settings += --set=defaultVaultConnection.skipTLSVerify=true
 
-vso-repo:
-	$(call header,Add Hashicorp Helm repository)
-	helm repo add hashicorp $(vso_repo)
-	helm repo update
-
-vso-template:
+vso-template: .hashicorp-helm-repo
 	$(call header,Template Hashicorp Vault Secrets Operator)
 	helm template vso hashicorp/vault-secrets-operator \
 	--version $(vso_chart_version) --namespace $(vso_namespace) $(vso_settings)
 
-vso-deploy: vso-repo
+vso-deploy: .hashicorp-helm-repo
 	$(call header,Deploy Hashicorp Vault Secrets Operator)
 	helm upgrade vso hashicorp/vault-secrets-operator \
 	--version $(vso_chart_version) --namespace $(vso_namespace) \

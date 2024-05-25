@@ -1,7 +1,7 @@
 **/.terraform/
 **/.terraform.lock.hcl
 **/terraform-output.json
+.hashicorp-helm-repo
 .vscode/**
 .elastic-helm-repo
-.vault-helm-repo
 .vault-token
