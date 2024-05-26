@@ -273,10 +273,19 @@ vso_chart_version := 0.6.0
 
 vso_values := $(root_dir)/kubernetes/vault-secrets-operator/values.yaml
 
-vso_settings += --set=defaultVaultConnection.enabled=true
+vso_settings += --set=fullnameOverride=vso
 vso_settings += --set=defaultVaultConnection.address=https://$(vault_kube_dns):8200
 vso_settings += --set=defaultVaultConnection.caCertSecret=tls-ca
 vso_settings += --set=defaultVaultConnection.skipTLSVerify=false
+vso_settings += --set=defaultAuthMethod.enabled=true
+vso_settings += --set=defaultAuthMethod.method=kubernetes
+vso_settings += --set=defaultAuthMethod.mount=kubernetes
+vso_settings += --set=defaultAuthMethod.namespace=$(vault_namespace)
+vso_settings += --set=defaultAuthMethod.allowedNamespaces[0]=$(vault_namespace)
+vso_settings += --set=defaultAuthMethod.kubernetes.role=vault-secrets-operator
+vso_settings += --set=defaultAuthMethod.kubernetes.serviceAccount=vso-controller-manager
+vso_settings += --set=defaultAuthMethod.kubernetes.tokenAudiences[0]=vso-controller-manager
+vso_settings += --set=tests.enabled=true
 
 vso: vso-deploy
 
