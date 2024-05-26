@@ -50,6 +50,8 @@ all: terraform vault
 
 clean: vault-clean terraform-clean gke-clean
 
+uninstall: vso-uninstall vault-uninstall vault-disks-delete terraform-destroy
+
 ###############################################################################
 # Terraform
 ###############################################################################
@@ -90,7 +92,7 @@ terraform-apply: terraform-init
 terraform-destroy: terraform-init
 	$(call header,Run Terraform Apply)
 	cd ${terraform_dir}
-	terraform apply -destroy -input=false -refresh=true -var-file="${terraform_config}"
+	terraform apply -auto-approve -destroy -input=false -refresh=true -var-file="${terraform_config}"
 
 terraform-clean:
 	$(call header,Delete Terraform providers and state)
@@ -245,7 +247,7 @@ vault-disks-list: $(vault_disks)
 	$(call header,List Vault Disks)
 	jq '[.[] | {name: .name, lastAttachTimestamp: .lastAttachTimestamp, selfLink: .selfLink}]' $(vault_disks)
 
-vault-disks-delete:
+vault-disks-delete: vault-purge $(vault_disks)
 	$(call header,Delete Vault Disks)
 	jq '.[].selfLink' $(vault_disks) | xargs -I {} gcloud compute disks delete {} --quiet
 
@@ -255,7 +257,7 @@ vault-helm-list: .hashicorp-helm-repo
 
 vault-uninstall:
 	$(call header,Uninstall Hashicorp Vault)
-	helm uninstall vault --namespace $(vault_namespace)
+	helm uninstall vault --namespace $(vault_namespace) || true
 
 vault-clean:
 	$(call header,Delete Vault token and keys)
@@ -263,6 +265,7 @@ vault-clean:
 
 vault-purge: vault-clean
 	$(call header,Purge Vault data)
+	kubectl delete namespaces vault || true
 	rm -rf $(vault_disks) $(vault_unseal_keys).asc
 
 ###############################################################################
@@ -302,7 +305,7 @@ vso-deploy: .hashicorp-helm-repo
 
 vso-uninstall:
 	$(call header,Uninstall Hashicorp Vault Secrets Operator)
-	helm uninstall vso --namespace $(vault_namespace)
+	helm uninstall vso --namespace $(vault_namespace) || true
 
 ###############################################################################
 # ElasticSearch
