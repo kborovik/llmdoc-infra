@@ -1,6 +1,7 @@
 .EXPORT_ALL_VARIABLES:
 .ONESHELL:
 .SILENT:
+
 MAKEFLAGS += --no-builtin-rules --no-builtin-variables
 
 ###############################################################################
@@ -14,8 +15,6 @@ google_project := lab5-llmdoc-dev1
 google_region := us-east5
 google_zone := ${google_region}-b
 endif
-
-PAUSE ?= 0
 
 ###############################################################################
 # Settings
@@ -37,30 +36,19 @@ root_dir := $(abspath .)
 
 settings:
 	$(call header,Settings)
-	echo "# VERSION: $(VERSION)"
-	echo "# deploy_target=$(deploy_target)"
-	echo "# google_project=$(google_project)"
-	echo "# google_region=$(google_region)"
-	echo "# gpg_key=$(gpg_key)"
+	$(call var,VERSION,$(VERSION))
+	$(call var,deploy_target,$(deploy_target))
+	$(call var,google_project,$(google_project))
+	$(call var,google_region,$(google_region))
+	$(call var,gpg_key,$(gpg_key))
 
 ###############################################################################
-# Repo Version
+# End-to-End Pipeline
 ###############################################################################
 
-version:
-	echo $$(date +%y.%m.%d-%H%M) >| VERSION
-	git add VERSION
-	echo "VERSION: $$(cat VERSION)"
+all: terraform vault
 
-commit: version
-	git add --all
-	git commit -m "$$(cat VERSION)"
-
-tag:
-	git tag $$(cat VERSION) -m "$$(cat VERSION)"
-	git push --tags
-
-release: tag
+clean: vault-clean terraform-clean gke-clean
 
 ###############################################################################
 # Terraform
@@ -72,7 +60,9 @@ terraform_output := $(root_dir)/state/terraform-$(google_project).json
 terraform_bucket := terraform-${google_project}
 terraform_prefix := ${app_id}
 
-terraform: terraform-plan prompt terraform-apply gke-credentials
+.PHONY: terraform
+
+terraform: terraform-plan prompt terraform-apply
 
 terraform-fmt: terraform-version
 	$(call header,Check Terraform Code Format)
@@ -103,7 +93,7 @@ terraform-destroy: terraform-init
 	terraform apply -destroy -input=false -refresh=true -var-file="${terraform_config}"
 
 terraform-clean:
-	$(call header,Run Terraform Clean)
+	$(call header,Delete Terraform providers and state)
 	-rm -rf ${terraform_dir}/.terraform ${terraform_dir}/.terraform.lock.hcl
 
 terraform-show:
@@ -146,22 +136,23 @@ vault_tls_key := $(shell gpg -dq secrets/tls.key.asc | base64 -w0)
 vault_token := $(HOME)/.vault-token
 vault_unseal_keys := secrets/vault-unseal-keys.json
 vault_disks := state/vault-disks-$(google_project).json
+vault_kube_dns := vault.vault.svc.cluster.local
 
 vault_vars += --set="vault_ver=$(vault_ver)"
 vault_vars += --set="vault_tls_key=$(vault_tls_key)"
 
-vault: vault-deploy vault-running vault-init vault-unseal vault-ready vault-cluster-members vault-cluster-status vault-disks-list
+vault: vault-deploy vault-pod-running vault-init vault-unseal vault-pod-ready vault-cluster-members vault-cluster-status vault-disks-list
 
-vault-restart: vault-pod-restart vault-running vault-unseal vault-ready vault-cluster-members vault-cluster-status
+vault-restart: vault-pod-restart vault-pod-running vault-unseal vault-pod-ready vault-cluster-members vault-cluster-status
+
+.hashicorp-helm-repo:
+	$(call header,Configure Hashicorp Helm repository)
+	helm repo add hashicorp https://helm.releases.hashicorp.com
+	helm repo update
+	touch $@
 
 vault-template:
 	helm template vault $(vault_dir) --namespace $(vault_namespace) $(vault_vars)
-
-vault-template-original: .vault-helm-repo
-	helm template vault  hashicorp/vault --namespace $(vault_namespace) \
-	--set="injector.enabled=false" \
-	--set="server.ha.enabled=true" \
-	--set="server.ha.replicas=3"
 
 vault-set-namespace:
 	kubectl config set-context --current --namespace $(vault_namespace)
@@ -178,7 +169,7 @@ vault-pod-restart: vault-set-namespace
 	echo "Hashicorp Vault pods restarted. Waiting for pods to be Running..."
 	sleep 20
 
-vault-running:
+vault-pod-running:
 	$(call header,Wait for Hashicorp Vault pods to be Running)
 	for pod in 0 1 2; do
 		running=$$(kubectl get pods vault-$$pod -n $(vault_namespace) -o jsonpath='{.status.phase}')
@@ -190,7 +181,7 @@ vault-running:
 		echo "Hashicorp Vault vault-$$pod is Running"
 	done
 
-vault-ready:
+vault-pod-ready:
 	$(call header,Wait for Hashicorp Vault StatefulSet to be Ready)
 	ready=""
 	while [ "$$ready" != "3" ]; do
@@ -200,6 +191,7 @@ vault-ready:
 	echo "Hashicorp Vault StatefulSet is Ready"
 
 vault-init: $(vault_unseal_keys)
+
 $(vault_unseal_keys):
 	$(call header,Initialize Hashicorp Vault)
 	gpg --yes $(@).asc \
@@ -209,38 +201,39 @@ $(vault_unseal_keys):
 
 vault-unseal: $(vault_unseal_keys)
 	$(call header,Unseal Hashicorp Vault)
-	for key in 0 1 2; do
-		kubectl exec -n $(vault_namespace) vault-0 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
-		kubectl exec -n $(vault_namespace) vault-1 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
-		kubectl exec -n $(vault_namespace) vault-2 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
+	for pod in 0 1 2; do
+		for key in 0 1 2; do
+			kubectl exec -n $(vault_namespace) vault-$$pod -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
+		done
 	done
 
 vault-join: $(vault_unseal_keys)
 	for key in 0 1 2; do
 		kubectl exec -n $(vault_namespace) vault-0 -- vault operator unseal $$(jq -r .unseal_keys_b64[$$key] $(vault_unseal_keys))
 	done
-	kubectl exec -n $(vault_namespace) vault-0 -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
-	kubectl exec -n $(vault_namespace) vault-1 -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
-	kubectl exec -n $(vault_namespace) vault-2 -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
+	for pod in 0 1 2; do
+		kubectl exec -n $(vault_namespace) vault-$$pod -- vault operator raft join -leader-ca-cert="/vault/certs/tls.ca" https://vault-0.cluster:8200
+	done
 
 vault-cluster-wait: vault-login
 	$(call header,Wait for Hashicorp Vault Cluster to reconcile)
-	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w2 active 8200 2>/dev/null; do
+	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w1 $(vault_kube_dns) 8200 2>/dev/null; do
 		echo "Waiting for Hashicorp Vault Cluster to reconcile..."
 		sleep 5
 	done
 
 vault-cluster-status: vault-cluster-wait
 	$(call header,Check Vault Cluster Status)
-	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=https://active:8200
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=https://$(vault_kube_dns):8200
 
 vault-cluster-members: vault-cluster-wait
 	$(call header,Check Vault Cluster Members)
-	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=https://active:8200
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=https://$(vault_kube_dns):8200
 
 vault-token: $(vault_token)
+
 $(vault_token):
-	jq -r '.root_token' secrets/vault-unseal-keys.json | tee $(@)
+	jq -r '.root_token' secrets/vault-unseal-keys.json >| $(@)
 
 vault-login: $(vault_token)
 	kubectl cp -n $(vault_namespace) $(vault_token) vault-0:/home/vault/.vault-token
@@ -252,36 +245,52 @@ vault-disks-list: $(vault_disks)
 	$(call header,List Vault Disks)
 	jq '[.[] | {name: .name, lastAttachTimestamp: .lastAttachTimestamp, selfLink: .selfLink}]' $(vault_disks)
 
-vault-disks-delete: $(vault_disks)
+vault-disks-delete:
 	$(call header,Delete Vault Disks)
-	jq '.[].selfLink' $(vault_disks) | xargs -I {} gcloud compute disks delete {} --quiet && rm -rf $(vault_disks) || exit 1
+	jq '.[].selfLink' $(vault_disks) | xargs -I {} gcloud compute disks delete {} --quiet
 
-.vault-helm-repo:
-	$(call header,Configure Hashicorp Helm repository)
-	helm repo add hashicorp https://helm.releases.hashicorp.com
-	helm repo update
-	touch $@
-
-vault-helm-list: .vault-helm-repo
+vault-helm-list: .hashicorp-helm-repo
 	$(call header,List Hashicorp Helm versions)
 	helm search repo hashicorp/vault
 
 vault-uninstall:
 	$(call header,Uninstall Hashicorp Vault)
-	helm uninstall vault --namespace $(vault_namespace) --wait
+	helm uninstall vault --namespace $(vault_namespace)
 
 vault-clean:
-	$(call header,Reset Vault Config)
-	set -e
-	$(MAKE) vault-disks-delete
-	rm -rf .vault-helm-repo $(vault_token) $(vault_unseal_keys) $(vault_unseal_keys).asc
+	$(call header,Delete Vault token and keys)
+	rm -rf .hashicorp-helm-repo $(vault_token) $(vault_unseal_keys)
+
+vault-purge: vault-clean
+	$(call header,Purge Vault data)
+	rm -rf $(vault_disks) $(vault_unseal_keys).asc
 
 ###############################################################################
 # Hashicorp Vault Secrets Operator
 # Docs: https://developer.hashicorp.com/vault/docs/platform/k8s/vso
 ###############################################################################
+vso_chart_version := 0.6.0
 
-vault_opr_ver := 0.5.2
+vso_values := $(root_dir)/kubernetes/vault-secrets-operator/values.yaml
+
+vso_settings += --set=defaultVaultConnection.enabled=true
+vso_settings += --set=defaultVaultConnection.address=https://$(vault_kube_dns):8200
+vso_settings += --set=defaultVaultConnection.skipTLSVerify=true
+
+vso-template: .hashicorp-helm-repo
+	$(call header,Template Hashicorp Vault Secrets Operator)
+	helm template vso hashicorp/vault-secrets-operator \
+	--version $(vso_chart_version) --namespace $(vault_namespace) $(vso_settings)
+
+vso-deploy: .hashicorp-helm-repo
+	$(call header,Deploy Hashicorp Vault Secrets Operator)
+	helm upgrade vso hashicorp/vault-secrets-operator \
+	--version $(vso_chart_version) --namespace $(vault_namespace) \
+	--install --create-namespace --wait --timeout=10m --atomic $(vso_settings)
+
+vso-uninstall:
+	$(call header,Uninstall Hashicorp Vault Secrets Operator)
+	helm uninstall vso --namespace $(vault_namespace)
 
 ###############################################################################
 # ElasticSearch
@@ -309,9 +318,14 @@ elastic-clean:
 ###############################################################################
 # Google CLI
 ###############################################################################
+
+google: gcloud-auth gcloud-config
+
 gcloud-auth:
 	$(call header,Configure Google CLI)
-	gcloud auth application-default login
+	set -e
+	gcloud auth revoke --all
+	gcloud auth login --update-adc
 
 gcloud-config:
 	set -e
@@ -319,43 +333,44 @@ gcloud-config:
 	gcloud config set compute/region ${google_region}
 	gcloud config list
 
-gcloud-version:
-	$(call header,gcloud version)
-	gcloud version
-
 ###############################################################################
 # Kubernetes (GKE)
 ###############################################################################
 
 KUBECONFIG ?= ${HOME}/.kube/config
 
-gke-credentials:
-	$(call header,Get GKE Credentials)
+kube: kube-clean kube-auth
+
+kube-auth: $(KUBECONFIG)
+
+$(KUBECONFIG):
+	$(call header,Get Kubernetes credentials)
 	set -e
-	-rm -f ${KUBECONFIG}
 	gcloud container clusters get-credentials --zone=${google_region} ${gke_name}
 	kubectl cluster-info
+
+kube-clean:
+	$(call header,Delete Kubernetes credentials)
+	rm -rf $(KUBECONFIG)
 
 ###############################################################################
 # Checkov
 ###############################################################################
-
-checkov_args := --soft-fail --enable-secret-scan-all-files --compact --deep-analysis --directory .
 
 .checkov.baseline:
 	echo "{}" >| $@
 
 checkov: .checkov.baseline
 	$(call header,Run Checkov with baseline)
-	checkov --baseline .checkov.baseline ${checkov_args}
+	checkov --baseline .checkov.baseline
 
 checkov-all:
 	$(call header,Run Checkov NO baseline)
-	checkov --quiet ${checkov_args}
+	checkov --quiet
 
 checkov-baseline:
 	$(call header,Create Checkov baseline)
-	checkov --quiet --create-baseline ${checkov_args}
+	checkov --quiet --create-baseline
 
 checkov-clean:
 	rm -rf .checkov.baseline
@@ -367,42 +382,57 @@ checkov-upgrade:
 	pipx upgrade checkov
 
 ###############################################################################
-# Demo
+# Colors and Headers
 ###############################################################################
 
-demo: demo-checkov demo-terraform
+black := \033[30m
+red := \033[31m
+green := \033[32m
+yellow := \033[33m
+blue := \033[34m
+magenta := \033[35m
+cyan := \033[36m
+white := \033[37m
+reset := \033[0m
 
-demo-checkov:
-	asciinema rec -t "llmdocs-infra - checkov" -c "PAUSE=3 make checkov"
+define header
+echo "$(blue)==> $(1) <==$(reset)"
+endef
 
-demo-terraform:
-	asciinema rec -t "llmdocs-infra - terraform" -c "PAUSE=3 make terraform-plan prompt terraform-apply"
+define help
+echo "$(green)$(1)$(reset) - $(white)$(2)$(reset)"
+endef
 
-demo-vault:
-	asciinema rec -t "llmdocs-infra - vault" -c "PAUSE=3 make settings vault"
-
-###############################################################################
-# Prompt
-###############################################################################
+define var
+echo "$(magenta)$(1)$(reset): $(yellow)$(2)$(reset)"
+endef
 
 prompt:
-	echo
-	read -p "Continue deployment? (yes/no): " INP
-	if [ "$${INP}" != "yes" ]; then
-	  echo "Deployment aborted"
-	  exit 1
-	fi
+	echo -n "$(blue)Continue?$(reset) $(yellow)(yes/no)$(reset)"
+	read -p ": " answer && [ "$$answer" = "yes" ] || exit 1
 
 ###############################################################################
-# Functions
+# Repo Version
 ###############################################################################
-define header
-echo
-echo "###############################################################################"
-echo "# $(1)"
-echo "###############################################################################"
-sleep ${PAUSE}
-endef
+
+.PHONY: version
+
+version:
+	version=$$(date +%Y.%m.%d-%H%M)
+	echo "$$version" >| VERSION
+	$(call header,Version: $$(cat VERSION))
+	git add VERSION
+
+commit: version
+	git add --all
+	git commit -m "$$(cat VERSION)"
+
+tag: commit
+	version=$$(date +%Y.%m.%d)
+	git tag "$$version" -m "Version: $$version"
+
+release: tag
+	git push --tags --force
 
 ###############################################################################
 # Errors

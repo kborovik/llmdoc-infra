@@ -51,8 +51,8 @@ resource "google_container_cluster" "gke1" {
 
   master_authorized_networks_config {
     cidr_blocks {
-      display_name = "Bell Canada AS577"
-      cidr_block   = "74.15.0.0/16"
+      display_name = "Bell Canada"
+      cidr_block   = "70.24.0.0/16"
     }
     cidr_blocks {
       display_name = "GCP Internal Network"

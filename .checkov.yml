@@ -1,0 +1,18 @@
+baseline: .checkov.baseline
+block-list-secret-scan: []
+branch: main
+compact: true
+directory:
+  - kubernetes
+  - terraform
+skip-path:
+  - vault/vault-ha/templates
+download-external-modules: false
+enable-secret-scan-all-files: true
+evaluate-variables: true
+external-modules-download-path: .external_modules
+mask: []
+secrets-history-timeout: 12h
+secrets-scan-file-type: []
+soft-fail: true
+summary-position: bottom
