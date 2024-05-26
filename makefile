@@ -275,7 +275,10 @@ vso_values := $(root_dir)/kubernetes/vault-secrets-operator/values.yaml
 
 vso_settings += --set=defaultVaultConnection.enabled=true
 vso_settings += --set=defaultVaultConnection.address=https://$(vault_kube_dns):8200
-vso_settings += --set=defaultVaultConnection.skipTLSVerify=true
+vso_settings += --set=defaultVaultConnection.caCertSecret=tls-ca
+vso_settings += --set=defaultVaultConnection.skipTLSVerify=false
+
+vso: vso-deploy
 
 vso-template: .hashicorp-helm-repo
 	$(call header,Template Hashicorp Vault Secrets Operator)
