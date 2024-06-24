@@ -460,7 +460,7 @@ commit: version
 
 merge:
 	branch_name=$$(git rev-parse --abbrev-ref HEAD)
-	gh pr merge --squash --merge --delete-branch --auto --subject "Merge $${branch_name}"
+	gh pr merge --squash --delete-branch --auto --subject "Merge $${branch_name}"
 
 ###############################################################################
 # Errors
