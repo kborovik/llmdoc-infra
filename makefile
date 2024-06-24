@@ -41,6 +41,7 @@ settings:
 	$(call var,google_project,$(google_project))
 	$(call var,google_region,$(google_region))
 	$(call var,gpg_key,$(gpg_key))
+	$(call var,VAULT_ADDR,$(VAULT_ADDR))
 
 ###############################################################################
 # End-to-End Pipeline
@@ -138,10 +139,12 @@ vault_tls_key := $(shell gpg -dq secrets/tls.key.asc | base64 -w0)
 vault_token := $(HOME)/.vault-token
 vault_unseal_keys := secrets/vault-unseal-keys.json
 vault_disks := state/vault-disks-$(google_project).json
-vault_kube_dns := vault.vault.svc.cluster.local
+vault_dns := vault.vault.svc.cluster.local
 
 vault_vars += --set="vault_ver=$(vault_ver)"
 vault_vars += --set="vault_tls_key=$(vault_tls_key)"
+
+VAULT_ADDR ?= https://$(vault_dns):8200
 
 vault: vault-deploy vault-pod-running vault-init vault-unseal vault-pod-ready vault-cluster-members vault-cluster-status vault-disks-list
 
@@ -219,23 +222,23 @@ vault-join: $(vault_unseal_keys)
 
 vault-cluster-wait: vault-login
 	$(call header,Wait for Hashicorp Vault Cluster to reconcile)
-	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w1 $(vault_kube_dns) 8200 2>/dev/null; do
+	while ! kubectl exec -i -n $(vault_namespace) vault-0 -- nc -z -w1 $(vault_dns) 8200 2>/dev/null; do
 		echo "Waiting for Hashicorp Vault Cluster to reconcile..."
 		sleep 5
 	done
 
 vault-cluster-status: vault-cluster-wait
 	$(call header,Check Vault Cluster Status)
-	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=https://$(vault_kube_dns):8200
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault status -address=https://$(vault_dns):8200
 
 vault-cluster-members: vault-cluster-wait
 	$(call header,Check Vault Cluster Members)
-	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=https://$(vault_kube_dns):8200
+	kubectl exec -i -n $(vault_namespace) vault-0 -- vault operator raft list-peers -address=https://$(vault_dns):8200
 
 vault-token: $(vault_token)
 
-$(vault_token):
-	jq -r '.root_token' secrets/vault-unseal-keys.json >| $(@)
+$(vault_token): $(vault_unseal_keys)
+	jq -r '.root_token' $(vault_unseal_keys) >| $(@)
 
 vault-login: $(vault_token)
 	kubectl cp -n $(vault_namespace) $(vault_token) vault-0:/home/vault/.vault-token
@@ -269,6 +272,18 @@ vault-purge: vault-clean
 	rm -rf $(vault_disks) $(vault_unseal_keys).asc
 
 ###############################################################################
+# Hashicorp Vault PKI
+# Docs: https://developer.hashicorp.com/vault/docs/secrets/pki
+###############################################################################
+
+pki-enable:
+	$(call header,Enable Hashicorp Vault PKI)
+	vault secrets enable -path=pki pki
+
+pki-config:
+	vault secrets tune -max-lease-ttl=8760h pki
+
+###############################################################################
 # Hashicorp Vault Secrets Operator
 # Docs: https://developer.hashicorp.com/vault/docs/platform/k8s/vso
 ###############################################################################
@@ -277,7 +292,7 @@ vso_chart_version := 0.6.0
 vso_values := $(root_dir)/kubernetes/vault-secrets-operator/values.yaml
 
 vso_settings += --set=fullnameOverride=vso
-vso_settings += --set=defaultVaultConnection.address=https://$(vault_kube_dns):8200
+vso_settings += --set=defaultVaultConnection.address=https://$(vault_dns):8200
 vso_settings += --set=defaultVaultConnection.caCertSecret=tls-ca
 vso_settings += --set=defaultVaultConnection.skipTLSVerify=false
 vso_settings += --set=defaultAuthMethod.enabled=true
@@ -400,15 +415,17 @@ checkov-upgrade:
 # Colors and Headers
 ###############################################################################
 
-black := \033[30m
-red := \033[31m
-green := \033[32m
-yellow := \033[33m
-blue := \033[34m
-magenta := \033[35m
-cyan := \033[36m
-white := \033[37m
-reset := \033[0m
+TERM := xterm-256color
+
+black := $$(tput setaf 0)
+red := $$(tput setaf 1)
+green := $$(tput setaf 2)
+yellow := $$(tput setaf 3)
+blue := $$(tput setaf 4)
+magenta := $$(tput setaf 5)
+cyan := $$(tput setaf 6)
+white := $$(tput setaf 7)
+reset := $$(tput sgr0)
 
 define header
 echo "$(blue)==> $(1) <==$(reset)"
@@ -436,18 +453,14 @@ version:
 	version=$$(date +%Y.%m.%d-%H%M)
 	echo "$$version" >| VERSION
 	$(call header,Version: $$(cat VERSION))
-	git add VERSION
+	git add --all
 
 commit: version
-	git add --all
 	git commit -m "$$(cat VERSION)"
 
-tag: commit
-	version=$$(date +%Y.%m.%d)
-	git tag "$$version" -m "Version: $$version"
-
-release: tag
-	git push --tags --force
+merge:
+	branch_name=$$(git rev-parse --abbrev-ref HEAD)
+	gh pr merge --squash --merge --auto --delete-branch --title "Merge $${branch_name}
 
 ###############################################################################
 # Errors
