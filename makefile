@@ -447,7 +447,7 @@ prompt:
 # Repo Version
 ###############################################################################
 
-.PHONY: version
+.PHONY: version commit merge
 
 version:
 	version=$$(date +%Y.%m.%d-%H%M)
@@ -459,8 +459,7 @@ commit: version
 	git commit -m "$$(cat VERSION)"
 
 merge:
-	branch_name=$$(git rev-parse --abbrev-ref HEAD)
-	gh pr merge --squash --delete-branch --subject "Merge $${branch_name}"
+	gh pr merge --squash --delete-branch $$(git rev-parse --abbrev-ref HEAD)
 
 ###############################################################################
 # Errors
