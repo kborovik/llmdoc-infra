@@ -49,6 +49,14 @@ resource "google_container_cluster" "gke1" {
     }
   }
 
+  maintenance_policy {
+    recurring_window {
+      start_time = "2024-01-01T09:00:00Z"
+      end_time   = "2024-01-01T17:00:00Z"
+      recurrence = "FREQ=WEEKLY;BYDAY=SA,SU"
+    }
+  }
+
   master_authorized_networks_config {
     cidr_blocks {
       display_name = "Bell Canada"
@@ -84,6 +92,7 @@ resource "google_container_node_pool" "p1" {
 
   node_config {
     service_account = google_service_account.gke1.email
+    preemptible     = var.google_project != "lab5-llmdoc-prd1" ? true : false
     machine_type    = var.gke_machine_type
     oauth_scopes    = ["cloud-platform"]
 
